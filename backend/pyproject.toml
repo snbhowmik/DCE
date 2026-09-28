@@ -16,6 +16,7 @@ dependencies = [
     "sqlmodel>=0.0.21",
     "typer>=0.12",
     "numpy>=1.26",
+    "statsforecast>=2.0",
 ]
 
 [project.scripts]

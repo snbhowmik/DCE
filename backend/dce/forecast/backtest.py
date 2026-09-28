@@ -18,6 +18,15 @@ QUANTILES = (0.1, 0.5, 0.9)
 QCOLS = ("q10", "q50", "q90")
 
 
+PREDICTION_SCHEMA = pl.Schema(
+    {"series_id": pl.String, "week_start": pl.Date, **dict.fromkeys(QCOLS, pl.Float64)}
+)
+
+
+def empty_prediction() -> pl.DataFrame:
+    return pl.DataFrame(schema=PREDICTION_SCHEMA)
+
+
 @dataclass(frozen=True)
 class Fold:
     k: int

@@ -13,7 +13,7 @@ from datetime import date
 import numpy as np
 import polars as pl
 
-from dce.forecast.backtest import QCOLS, QUANTILES
+from dce.forecast.backtest import PREDICTION_SCHEMA, QUANTILES, empty_prediction
 
 
 def _quantile_frame(
@@ -31,7 +31,7 @@ def _quantile_frame(
         rows.append((series_id, wk, min(lo, mid), mid, max(hi, mid)))
     return pl.DataFrame(
         rows,
-        schema={"series_id": pl.String, "week_start": pl.Date, **dict.fromkeys(QCOLS, pl.Float64)},
+        schema=PREDICTION_SCHEMA,
         orient="row",
     )
 
@@ -67,7 +67,7 @@ class SeasonalNaive:
                     y[h + 1 :] - y[: n - h - 1] if n > h + 1 else np.array([]) for h in range(H)
                 ]
             frames.append(_quantile_frame(sid, horizon, point, resid))
-        return pl.concat(frames) if frames else _empty()
+        return pl.concat(frames) if frames else empty_prediction()
 
 
 class WindowAverage:
@@ -99,10 +99,4 @@ class WindowAverage:
             else:
                 resid = [np.array([]) for _ in range(H)]
             frames.append(_quantile_frame(sid, horizon, point, resid))
-        return pl.concat(frames) if frames else _empty()
-
-
-def _empty() -> pl.DataFrame:
-    return pl.DataFrame(
-        schema={"series_id": pl.String, "week_start": pl.Date, **dict.fromkeys(QCOLS, pl.Float64)}
-    )
+        return pl.concat(frames) if frames else empty_prediction()

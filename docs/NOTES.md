@@ -206,6 +206,11 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Consequences:** biased rules (e.g. naive on a trend) get one-sided bands; calibration (T2.6) corrects coverage.
 - **Refs:** ARCH §5.4; T2.2
 
+### D-023 · statsforecast wrappers · 2026-09-29 · accepted
+- **Context:** statsforecast ETS only supports seasonal periods ≤ 24; with weekly data (m = 52) AutoETS fits non-seasonal models. AutoTheta applies its own seasonality test.
+- **Decision:** keep `AutoETS(season_length=52)` and `AutoTheta(season_length=52)` as specified; accept ETS as non-seasonal (weekly seasonality is carried by SeasonalNaive and LightGBM calendar features, and selection picks per series). P50 = model mean, P10/P90 = 80% interval, clipped ≥ 0 with P50-anchored crossing guard. `fallback_model=Naive()` for series the model can't fit; `n_jobs=1` for determinism. Series whose history stops before the origin are forecast through the gap and cut to the horizon.
+- **Refs:** ARCH §5.4; T2.3
+
 ---
 
 ## 2. Assumptions register
@@ -365,6 +370,15 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Files touched:** `backend/dce/forecast/baselines.py`, `backend/dce/tests/test_baselines.py`
 - **Tests:** 7 added / 89 passing (seasonal copy; residual quantiles vs numpy; short-history fallback; window mean; hand-computed h=1 residuals; ordering + non-negativity; backtest smoke on fixture)
 - **Decisions made:** D-022
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** none
+
+### TL-011 · T2.3 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.forecast.statistical`: `auto_ets()` / `auto_theta()` wrappers (statsforecast 2.0.1) implementing the `Forecaster` protocol. Shared `PREDICTION_SCHEMA` / `empty_prediction()` in `backtest.py`.
+- **Files touched:** `backend/dce/forecast/{statistical,backtest,baselines}.py`, `backend/pyproject.toml` (+statsforecast), `backend/dce/tests/test_statistical.py`
+- **Tests:** 4 added / 93 passing (contract shape, ordering, non-negativity, no NaN incl. all-zero and early-ending series; ETS extrapolates a trend; backtest smoke)
+- **Decisions made:** D-023
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** none
 

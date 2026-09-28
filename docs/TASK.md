@@ -75,7 +75,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 - [x] **T2.2 Baselines**: SeasonalNaive(52), WindowAverage(8), with quantiles from empirical residuals.
   *Depends:* T2.1
 
-- [ ] **T2.3 Statistical models**: AutoETS, AutoTheta via statsforecast.
+- [x] **T2.3 Statistical models**: AutoETS, AutoTheta via statsforecast.
   *Depends:* T2.1
 
 - [ ] **T2.4 LightGBM global quantile model**
