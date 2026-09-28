@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "product_matrix.schema.json",
+  "title": "product_matrix.csv",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sku_id",
+    "channel",
+    "region_id",
+    "eligible_from",
+    "eligible_to"
+  ],
+  "properties": {
+    "sku_id": {
+      "type": "string"
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "D2C",
+        "B2B"
+      ]
+    },
+    "region_id": {
+      "type": "string"
+    },
+    "eligible_from": {
+      "type": "string",
+      "format": "date"
+    },
+    "eligible_to": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    }
+  },
+  "x-contract-version": "1.0.0",
+  "description": "Product matrix, part 2: SKU × channel × region eligibility.",
+  "x-natural-key": [
+    "sku_id",
+    "channel",
+    "region_id",
+    "eligible_from"
+  ],
+  "x-foreign-keys": [
+    {
+      "column": "sku_id",
+      "references": "skus.sku_id"
+    },
+    {
+      "column": "region_id",
+      "references": "regions.region_id"
+    }
+  ],
+  "x-row-rules": [
+    {
+      "name": "eligible_window_ordered",
+      "rule": "eligible_to ≥ eligible_from",
+      "severity": "error"
+    }
+  ]
+}

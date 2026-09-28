@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "capacity_batches.schema.json",
+  "title": "capacity_batches.csv",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "batch_id",
+    "start_date",
+    "end_date",
+    "facility_id",
+    "product_line",
+    "planned_yield_kg",
+    "actual_yield_kg",
+    "outcome"
+  ],
+  "properties": {
+    "batch_id": {
+      "type": "string"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "facility_id": {
+      "type": "string"
+    },
+    "product_line": {
+      "type": "string"
+    },
+    "planned_yield_kg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "actual_yield_kg": {
+      "type": "number",
+      "minimum": 0,
+      "description": "0 if failed"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "success",
+        "partial",
+        "failed"
+      ]
+    }
+  },
+  "x-contract-version": "1.0.0",
+  "description": "In-house production batches.",
+  "x-primary-key": [
+    "batch_id"
+  ],
+  "x-row-rules": [
+    {
+      "name": "batch_dates_ordered",
+      "rule": "end_date ≥ start_date",
+      "severity": "error"
+    },
+    {
+      "name": "failed_has_zero_yield",
+      "rule": "failed batches have actual_yield_kg = 0",
+      "severity": "error"
+    }
+  ]
+}

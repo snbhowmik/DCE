@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "skus.schema.json",
+  "title": "skus.csv",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sku_id",
+    "product_line",
+    "pack_size_kg",
+    "status",
+    "expected_launch_date",
+    "shelf_life_days",
+    "unit_cost_inr_per_kg",
+    "list_price_d2c_inr_per_kg"
+  ],
+  "properties": {
+    "sku_id": {
+      "type": "string"
+    },
+    "product_line": {
+      "type": "string",
+      "description": "e.g. cultivated_chicken, mycelium, seaweed, microbial"
+    },
+    "pack_size_kg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "rnd",
+        "pilot",
+        "production",
+        "retired"
+      ]
+    },
+    "expected_launch_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date",
+      "description": "for rnd/pilot"
+    },
+    "shelf_life_days": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "unit_cost_inr_per_kg": {
+      "type": "number",
+      "minimum": 0,
+      "description": "production cost"
+    },
+    "list_price_d2c_inr_per_kg": {
+      "type": "number",
+      "minimum": 0
+    }
+  },
+  "x-contract-version": "1.0.0",
+  "description": "Product matrix, part 1.",
+  "x-primary-key": [
+    "sku_id"
+  ]
+}

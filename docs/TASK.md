@@ -25,7 +25,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
   *Do:* create the layout from ARCH §4; `uv` project in `backend/`; Next.js app in `frontend/`; Makefile (`make setup`, `make test`, `make lint`, `make run-api`, `make run-web`); ruff + mypy; pre-commit; `.gitignore` for `data/incoming`, `data/processed`, `.env`.
   *Accept:* `make setup && make test` passes with an empty test suite; `make lint` is clean.
 
-- [ ] **T0.2 Data contract v1**
+- [x] **T0.2 Data contract v1**
   *Refs:* ARCH §3
   *Do:* JSON Schemas + pandera models for all 13 files + `manifest.json`; `CONTRACT_VERSION = 1.0.0`; `contract/README.md` rendering the tables.
   *Accept:* schemas validate a correct fixture and reject each of: wrong type, missing column, bad enum, FK violation.

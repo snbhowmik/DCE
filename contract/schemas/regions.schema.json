@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "regions.schema.json",
+  "title": "regions.csv",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "region_id",
+    "region_name",
+    "tier",
+    "cold_chain_available"
+  ],
+  "properties": {
+    "region_id": {
+      "type": "string"
+    },
+    "region_name": {
+      "type": "string"
+    },
+    "tier": {
+      "type": "string",
+      "description": "e.g. metro / tier1 / tier2"
+    },
+    "cold_chain_available": {
+      "type": "boolean",
+      "description": "D2C deliverable if true"
+    }
+  },
+  "x-contract-version": "1.0.0",
+  "x-primary-key": [
+    "region_id"
+  ]
+}

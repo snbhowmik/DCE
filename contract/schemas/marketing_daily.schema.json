@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "marketing_daily.schema.json",
+  "title": "marketing_daily.csv",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "date",
+    "region_id",
+    "channel",
+    "campaign_type",
+    "campaign_id",
+    "spend_inr",
+    "impressions",
+    "clicks",
+    "unique_visitors",
+    "bounces",
+    "leads",
+    "qualified_leads",
+    "conversions",
+    "attributed_revenue_inr"
+  ],
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "region_id": {
+      "type": "string"
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "D2C",
+        "B2B"
+      ],
+      "description": "usually D2C; B2B for trade marketing"
+    },
+    "campaign_type": {
+      "type": "string",
+      "enum": [
+        "ppc",
+        "native",
+        "social",
+        "influencer",
+        "email",
+        "trade"
+      ]
+    },
+    "campaign_id": {
+      "type": "string"
+    },
+    "spend_inr": {
+      "type": "number",
+      "minimum": 0
+    },
+    "impressions": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "clicks": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "unique_visitors": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "bounces": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "leads": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "qualified_leads": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "conversions": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "new customers"
+    },
+    "attributed_revenue_inr": {
+      "type": "number",
+      "minimum": 0,
+      "description": "platform-attributed (biased; don't trust blindly)"
+    }
+  },
+  "x-contract-version": "1.0.0",
+  "x-natural-key": [
+    "date",
+    "region_id",
+    "channel",
+    "campaign_id"
+  ],
+  "x-foreign-keys": [
+    {
+      "column": "region_id",
+      "references": "regions.region_id"
+    }
+  ],
+  "x-row-rules": [
+    {
+      "name": "bounces_le_visitors",
+      "rule": "bounces ≤ unique_visitors",
+      "severity": "warning"
+    },
+    {
+      "name": "qualified_le_leads",
+      "rule": "qualified_leads ≤ leads",
+      "severity": "warning"
+    }
+  ]
+}

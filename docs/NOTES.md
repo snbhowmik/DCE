@@ -141,6 +141,18 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decision:** `.importlinter` forbids `dce.{forecast,capacity,response,metrics,demand}` from importing `dce.{optimize,risk,mitigate,onboarding,ai}`; `make lint` runs it. T2.8 adds the config-file read check.
 - **Refs:** IDEATION P1; ARCH §1, §9.4; T2.8
 
+### D-014 · Contract spec lives in Python; JSON Schemas and README are generated · 2026-09-29 · accepted
+- **Context:** ARCH §4 lists `contract/models.py (pandera)`. `contract/` is not a Python package, and hand-maintaining 13 JSON Schemas + pandera models + README in parallel invites drift.
+- **Options:** (A) hand-written JSON Schemas as source, pandera parsed from them; (B) `contract/models.py` loaded via importlib; (C) Python spec in `dce.contract.spec` → generated `contract/schemas/*.json`, `contract/README.md`, `contract/CONTRACT_VERSION`; pandera built from the spec at runtime.
+- **Decision:** C. `dce contract export` regenerates; a test fails if the committed files drift from the spec. `contract/` stays language-neutral (what the DGP side reads).
+- **Consequences:** deviation from ARCH §4 file location only; content is ARCH §3 verbatim plus the clarifications in CC-001.
+- **Refs:** ARCH §3, §4; T0.2
+
+### D-015 · Validation reads CSVs as strings and casts per contract · 2026-09-29 · accepted
+- **Context:** Type errors must be reported with row locations; letting the CSV reader infer types hides them.
+- **Decision:** read all columns as strings; cast per contract; any non-empty cell that fails to cast is a `type` error with CSV line numbers. Pandera (polars backend) then checks nulls, enums, ranges, and PK uniqueness. FKs, row rules, and Monday checks run afterwards. Severity: `error` blocks ingest; `warning` is reported only.
+- **Refs:** ARCH §5.1; T0.2, T1.1
+
 ---
 
 ## 2. Assumptions register
@@ -187,7 +199,15 @@ Every task completion, design decision, assumption, contract change, integrity e
 
 ## 4. Contract change requests
 
-*(none yet)*
+### CC-001 · 2026-09-29 · status: requested
+- **Change:** clarifications of v1 semantics that ARCH §3 leaves implicit (no field added or removed):
+  1. CSV encoding: UTF-8, header row, column order free; null = empty cell; booleans `true`/`false` (case-insensitive, `1`/`0` accepted); integer columns accept integral floats (`3.0`).
+  2. `manifest.json` is a closed schema with exactly: `world_id`, `contract_version`, `start_date`, `end_date`, `generated_at` (ISO 8601 datetime), optional `files` (name → SHA-256). Any other key is rejected, so the manifest cannot carry regime information.
+  3. Foreign keys: `orders.customer_id` → `customers` (D2C rows), `orders.account_id` → `b2b_accounts` (B2B rows); `nps_responses.customer_or_account_id` → `customers` or `b2b_accounts` by `channel`; `b2b_accounts.regions_served` elements → `regions`; `coman_activity.coman_id` → `coman_contracts`; all `region_id`/`sku_id` columns → their tables.
+  4. Row rules (errors): D2C orders have `customer_id` and no `account_id`, B2B the reverse; failed batches have `actual_yield_kg = 0`; `end_date ≥ start_date` for batches, contracts, eligibility windows; `min_commit ≤ max` for co-man; `churned_date ≥ acquired_date`; `week_start` columns are Mondays.
+  5. Natural keys (duplicates are warnings, summed): capacity_plan, coman_activity, marketing_plan, marketing_daily, product_matrix.
+- **Reason:** the app must reject malformed drops deterministically and with locations; the DGP side needs the same reading to emit conforming files. Full rendering in `contract/README.md`.
+- **Version bump:** none (1.0.0); clarifications only. To be confirmed by the DGP side.
 
 ## 5. Integrity events
 
@@ -213,4 +233,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-012, D-013
 - **Deviations from ARCH:** none (D-012 resolves a README/ARCH path mismatch)
 - **Known issues / follow-ups:** `make run-api` target references `dce.api.app`, which lands in T8.1; uvicorn not yet a dependency.
+
+### TL-002 · T0.2 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** Data contract v1: Python spec for all 13 tables + manifest (`dce.contract.spec`), generated JSON Schemas (draft 2020-12) and `contract/README.md`, validator (string read → typed cast → pandera → row rules → FKs → manifest) with issue locations. CLI: `dce contract export`, `dce contract check <dir>`.
+- **Files touched:** `backend/dce/contract/{spec,export,validate}.py`, `backend/dce/cli.py`, `contract/**`, `backend/dce/tests/test_contract.py`
+- **Tests:** 16 added / 17 passing (valid world; wrong type; bad date/int; missing column; missing file; bad enum; FK; list-FK + conditional FK; null; duplicate PK; range + row rules + Monday; closed manifest; major version; JSON Schema validity; contract drift)
+- **Decisions made:** D-014, D-015; CC-001 requested
+- **Deviations from ARCH:** pandera models built at runtime rather than stored in `contract/models.py` (D-014)
+- **Known issues / follow-ups:** CC-001 must be shared with the DGP side (`contract/README.md`).
 

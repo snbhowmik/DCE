@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "customers.schema.json",
+  "title": "customers.csv",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "customer_id",
+    "region_id",
+    "acquired_date",
+    "acquisition_campaign_type",
+    "persona_segment",
+    "churned_date",
+    "is_subscriber"
+  ],
+  "properties": {
+    "customer_id": {
+      "type": "string"
+    },
+    "region_id": {
+      "type": "string"
+    },
+    "acquired_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "acquisition_campaign_type": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "ppc",
+        "native",
+        "social",
+        "influencer",
+        "email",
+        "trade",
+        null
+      ],
+      "description": "null = organic / word of mouth"
+    },
+    "persona_segment": {
+      "type": "string"
+    },
+    "churned_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date",
+      "description": "inferred by company rules"
+    },
+    "is_subscriber": {
+      "type": "boolean"
+    }
+  },
+  "x-contract-version": "1.0.0",
+  "description": "D2C CRM.",
+  "x-primary-key": [
+    "customer_id"
+  ],
+  "x-foreign-keys": [
+    {
+      "column": "region_id",
+      "references": "regions.region_id"
+    }
+  ],
+  "x-row-rules": [
+    {
+      "name": "churn_after_acquired",
+      "rule": "churned_date ≥ acquired_date",
+      "severity": "error"
+    }
+  ]
+}

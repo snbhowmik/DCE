@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "b2b_accounts.schema.json",
+  "title": "b2b_accounts.csv",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "account_id",
+    "account_type",
+    "region_id",
+    "regions_served",
+    "outlets_count",
+    "status",
+    "onboarded_date",
+    "contract_start",
+    "contract_end",
+    "committed_kg_per_month",
+    "contract_price_inr_per_kg",
+    "shortfall_penalty_inr_per_kg",
+    "requested_start_date",
+    "requested_kg_per_month"
+  ],
+  "properties": {
+    "account_id": {
+      "type": "string"
+    },
+    "account_type": {
+      "type": "string",
+      "enum": [
+        "restaurant",
+        "qsr_chain",
+        "hotel",
+        "caterer",
+        "distributor",
+        "other"
+      ]
+    },
+    "region_id": {
+      "type": "string",
+      "description": "primary region"
+    },
+    "regions_served": {
+      "type": "string",
+      "description": "pipe-separated region_ids (reach)"
+    },
+    "outlets_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "reach"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "pipeline",
+        "churned",
+        "paused"
+      ]
+    },
+    "onboarded_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    },
+    "contract_start": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    },
+    "contract_end": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    },
+    "committed_kg_per_month": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "contract_price_inr_per_kg": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "shortfall_penalty_inr_per_kg": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "requested_start_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date",
+      "description": "pipeline only"
+    },
+    "requested_kg_per_month": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "pipeline only"
+    }
+  },
+  "x-contract-version": "1.0.0",
+  "x-primary-key": [
+    "account_id"
+  ],
+  "x-foreign-keys": [
+    {
+      "column": "region_id",
+      "references": "regions.region_id"
+    },
+    {
+      "column": "regions_served",
+      "references": "regions.region_id",
+      "separator": "|"
+    }
+  ],
+  "x-row-rules": [
+    {
+      "name": "contract_window_ordered",
+      "rule": "contract_end ≥ contract_start",
+      "severity": "error"
+    }
+  ]
+}

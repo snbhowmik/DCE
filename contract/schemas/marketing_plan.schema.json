@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "marketing_plan.schema.json",
+  "title": "marketing_plan.csv",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "week_start",
+    "region_id",
+    "channel",
+    "campaign_type",
+    "planned_spend_inr"
+  ],
+  "properties": {
+    "week_start": {
+      "type": "string",
+      "format": "date"
+    },
+    "region_id": {
+      "type": "string"
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "D2C",
+        "B2B"
+      ]
+    },
+    "campaign_type": {
+      "type": "string",
+      "enum": [
+        "ppc",
+        "native",
+        "social",
+        "influencer",
+        "email",
+        "trade"
+      ]
+    },
+    "planned_spend_inr": {
+      "type": "number",
+      "minimum": 0
+    }
+  },
+  "x-contract-version": "1.0.0",
+  "description": "Forward-looking planned spend.",
+  "x-natural-key": [
+    "week_start",
+    "region_id",
+    "channel",
+    "campaign_type"
+  ],
+  "x-foreign-keys": [
+    {
+      "column": "region_id",
+      "references": "regions.region_id"
+    }
+  ],
+  "x-monday-columns": [
+    "week_start"
+  ]
+}

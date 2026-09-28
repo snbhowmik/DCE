@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "orders.schema.json",
+  "title": "orders.csv",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "order_id",
+    "order_date",
+    "channel",
+    "region_id",
+    "sku_id",
+    "customer_id",
+    "account_id",
+    "requested_qty_kg",
+    "fulfilled_qty_kg",
+    "unit_price_inr",
+    "status",
+    "promised_date",
+    "delivered_date"
+  ],
+  "properties": {
+    "order_id": {
+      "type": "string"
+    },
+    "order_date": {
+      "type": "string",
+      "format": "date",
+      "description": "when requested"
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "D2C",
+        "B2B"
+      ]
+    },
+    "region_id": {
+      "type": "string"
+    },
+    "sku_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "D2C only"
+    },
+    "account_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "B2B only"
+    },
+    "requested_qty_kg": {
+      "type": "number",
+      "minimum": 0,
+      "description": "**unconstrained demand signal**"
+    },
+    "fulfilled_qty_kg": {
+      "type": "number",
+      "minimum": 0,
+      "description": "≤ requested"
+    },
+    "unit_price_inr": {
+      "type": "number",
+      "minimum": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "fulfilled",
+        "partial",
+        "waitlisted",
+        "cancelled_stockout",
+        "cancelled_other"
+      ]
+    },
+    "promised_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "delivered_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    }
+  },
+  "x-contract-version": "1.0.0",
+  "x-primary-key": [
+    "order_id"
+  ],
+  "x-foreign-keys": [
+    {
+      "column": "region_id",
+      "references": "regions.region_id"
+    },
+    {
+      "column": "sku_id",
+      "references": "skus.sku_id"
+    },
+    {
+      "column": "customer_id",
+      "references": "customers.customer_id",
+      "when": {
+        "channel": "D2C"
+      }
+    },
+    {
+      "column": "account_id",
+      "references": "b2b_accounts.account_id",
+      "when": {
+        "channel": "B2B"
+      }
+    }
+  ],
+  "x-row-rules": [
+    {
+      "name": "fulfilled_le_requested",
+      "rule": "fulfilled_qty_kg ≤ requested_qty_kg",
+      "severity": "error"
+    },
+    {
+      "name": "d2c_has_customer",
+      "rule": "D2C orders carry customer_id and no account_id",
+      "severity": "error"
+    },
+    {
+      "name": "b2b_has_account",
+      "rule": "B2B orders carry account_id and no customer_id",
+      "severity": "error"
+    }
+  ]
+}

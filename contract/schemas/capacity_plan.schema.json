@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "capacity_plan.schema.json",
+  "title": "capacity_plan.csv",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "week_start",
+    "facility_id",
+    "product_line",
+    "planned_batches",
+    "planned_yield_per_batch_kg"
+  ],
+  "properties": {
+    "week_start": {
+      "type": "string",
+      "format": "date",
+      "description": "covers history + ≥ 13 weeks ahead"
+    },
+    "facility_id": {
+      "type": "string"
+    },
+    "product_line": {
+      "type": "string"
+    },
+    "planned_batches": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "planned_yield_per_batch_kg": {
+      "type": "number",
+      "minimum": 0
+    }
+  },
+  "x-contract-version": "1.0.0",
+  "description": "Forward-looking plan, known to the company.",
+  "x-natural-key": [
+    "week_start",
+    "facility_id",
+    "product_line"
+  ],
+  "x-monday-columns": [
+    "week_start"
+  ]
+}

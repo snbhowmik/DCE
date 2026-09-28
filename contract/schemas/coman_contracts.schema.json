@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coman_contracts.schema.json",
+  "title": "coman_contracts.csv",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "coman_id",
+    "product_line",
+    "available_from",
+    "lead_time_weeks",
+    "min_commit_kg_per_week",
+    "max_kg_per_week",
+    "unit_cost_inr_per_kg",
+    "min_active_weeks"
+  ],
+  "properties": {
+    "coman_id": {
+      "type": "string"
+    },
+    "product_line": {
+      "type": "string"
+    },
+    "available_from": {
+      "type": "string",
+      "format": "date",
+      "description": "earliest possible"
+    },
+    "lead_time_weeks": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "activation → first output"
+    },
+    "min_commit_kg_per_week": {
+      "type": "number",
+      "minimum": 0,
+      "description": "once active"
+    },
+    "max_kg_per_week": {
+      "type": "number",
+      "minimum": 0
+    },
+    "unit_cost_inr_per_kg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "min_active_weeks": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "x-contract-version": "1.0.0",
+  "x-primary-key": [
+    "coman_id"
+  ],
+  "x-row-rules": [
+    {
+      "name": "coman_min_le_max",
+      "rule": "min_commit_kg_per_week ≤ max_kg_per_week",
+      "severity": "error"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coman_activity.schema.json",
+  "title": "coman_activity.csv",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "coman_id",
+    "week_start",
+    "requested_kg",
+    "delivered_kg"
+  ],
+  "properties": {
+    "coman_id": {
+      "type": "string"
+    },
+    "week_start": {
+      "type": "string",
+      "format": "date"
+    },
+    "requested_kg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "delivered_kg": {
+      "type": "number",
+      "minimum": 0,
+      "description": "reliability signal"
+    }
+  },
+  "x-contract-version": "1.0.0",
+  "description": "History of co-man use. May be empty (header only) if co-man was never used.",
+  "x-natural-key": [
+    "coman_id",
+    "week_start"
+  ],
+  "x-foreign-keys": [
+    {
+      "column": "coman_id",
+      "references": "coman_contracts.coman_id"
+    }
+  ],
+  "x-monday-columns": [
+    "week_start"
+  ]
+}

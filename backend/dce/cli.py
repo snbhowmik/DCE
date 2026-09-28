@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import typer
 
-from dce import __version__
+from dce import __version__, paths
 
 app = typer.Typer(no_args_is_help=True, help="Biokraft Demand-Capacity Engine")
 
@@ -18,6 +21,32 @@ def main() -> None:
 def version() -> None:
     """Print the package version."""
     typer.echo(__version__)
+
+
+contract_app = typer.Typer(no_args_is_help=True, help="Data contract tools.")
+app.add_typer(contract_app, name="contract")
+
+
+@contract_app.command("export")
+def contract_export() -> None:
+    """Regenerate contract/ (JSON Schemas, README, CONTRACT_VERSION) from the spec."""
+    from dce.contract.export import export
+
+    for p in export(paths.CONTRACT_DIR):
+        typer.echo(p.relative_to(paths.ROOT))
+
+
+@contract_app.command("check")
+def contract_check(world_dir: Path) -> None:
+    """Validate a world folder against the contract (no ingest, no storage)."""
+    from dce.contract.validate import validate_world
+
+    result = validate_world(world_dir)
+    for issue in result.issues:
+        typer.echo(json.dumps(issue.to_dict(), ensure_ascii=False))
+    n_err = len(result.errors)
+    typer.echo(f"{n_err} error(s), {len(result.issues) - n_err} warning(s)")
+    raise typer.Exit(0 if result.ok else 1)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "manifest.schema.json",
+  "title": "manifest.json",
+  "description": "Per-world manifest. Must not describe the world's regime.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "world_id",
+    "contract_version",
+    "start_date",
+    "end_date",
+    "generated_at"
+  ],
+  "properties": {
+    "world_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "contract_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "files": {
+      "type": "object",
+      "description": "Optional map of file name \u2192 SHA-256 hex digest.",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    }
+  }
+}

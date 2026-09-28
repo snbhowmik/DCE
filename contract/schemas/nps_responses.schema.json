@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nps_responses.schema.json",
+  "title": "nps_responses.csv",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "response_date",
+    "channel",
+    "region_id",
+    "customer_or_account_id",
+    "score"
+  ],
+  "properties": {
+    "response_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "D2C",
+        "B2B"
+      ]
+    },
+    "region_id": {
+      "type": "string"
+    },
+    "customer_or_account_id": {
+      "type": "string"
+    },
+    "score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10
+    }
+  },
+  "x-contract-version": "1.0.0",
+  "x-foreign-keys": [
+    {
+      "column": "region_id",
+      "references": "regions.region_id"
+    },
+    {
+      "column": "customer_or_account_id",
+      "references": "customers.customer_id",
+      "when": {
+        "channel": "D2C"
+      }
+    },
+    {
+      "column": "customer_or_account_id",
+      "references": "b2b_accounts.account_id",
+      "when": {
+        "channel": "B2B"
+      }
+    }
+  ]
+}
