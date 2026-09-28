@@ -1,0 +1,38 @@
+# Strategy modes (IDEATION §8, ARCH §7). Initial values; tune only with a TN entry in NOTES.
+# Read ONLY via dce.strategy; forecast/capacity/response/metrics must never see this file (P1).
+GROWTH:
+  q_capacity: 0.5
+  q_demand_b2b: 0.5
+  weights: {rev: 1.0, pen: 1.0, gw: 0.3, spend: 1.0, reach: 0.2, cust: 0.0}
+  b2b_service_floor: 0.85
+  res_gate: 0.0          # z-score threshold
+  exploration_share: 0.10
+  breach_threshold: 0.30
+  onboarding_aqs_weights: reach_heavy
+STABILITY:
+  q_capacity: 0.15
+  q_demand_b2b: 0.8
+  weights: {rev: 1.0, pen: 3.0, gw: 0.6, spend: 1.0, reach: 0.0, cust: 0.0}
+  b2b_service_floor: 0.98
+  res_gate: 0.5
+  exploration_share: 0.0
+  breach_threshold: 0.15
+  onboarding_aqs_weights: reliability_heavy
+D2C_EXPANSION:
+  q_capacity: 0.5
+  q_demand_b2b: 0.5
+  weights: {rev: 1.0, pen: 1.5, gw: 0.2, spend: 1.0, reach: 0.0, cust: 0.5}
+  b2b_service_floor: 0.90
+  res_gate: 0.3
+  exploration_share: 0.15
+  breach_threshold: 0.30
+  onboarding_policy: paused_unless_exceptional
+CUSTOM:
+  q_capacity: 0.5
+  q_demand_b2b: 0.5
+  weights: {rev: 1.0, pen: 1.0, gw: 0.3, spend: 1.0, reach: 0.0, cust: 0.0}
+  b2b_service_floor: 0.90
+  res_gate: 0.0
+  exploration_share: 0.05
+  breach_threshold: 0.25
+  onboarding_aqs_weights: balanced

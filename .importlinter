@@ -1,10 +1,10 @@
 [importlinter]
 root_package = dce
 
-# IDEATION P1 / ARCH §1: strategy config enters only at optimize, risk, mitigate.
-# Upstream modules must not import from them. Extended in T2.8.
+# IDEATION P1 / ARCH §1: strategy config enters only at optimize, risk, mitigate (+ onboarding).
+# Upstream modules must not import strategy-aware code, directly or transitively.
 [importlinter:contract:upstream-independent-of-strategy]
-name = Forecast/capacity/response/metrics never import strategy-aware modules
+name = Forecast/capacity/response/metrics/demand never import strategy-aware modules
 type = forbidden
 source_modules =
     dce.forecast
@@ -13,8 +13,10 @@ source_modules =
     dce.metrics
     dce.demand
 forbidden_modules =
+    dce.strategy
     dce.optimize
     dce.risk
     dce.mitigate
     dce.onboarding
     dce.ai
+    dce.runner

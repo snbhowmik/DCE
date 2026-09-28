@@ -239,6 +239,12 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decision:** included = `status == active` with a positive commitment, a contract start, and no contract end before the first horizon week; everything else is excluded with a stated reason (pipeline, churned, paused, no commitment, contract ended). Weekly commitment = monthly × 12/52. Ratio series run from max(contract start, history start) to the last history week at account level (summed over SKU/region), and go through the same selection/calibration/path pipeline as D2C (so they get the same model choice rules). kg = ratio × weekly commitment; weeks starting after `contract_end` are 0 in quantiles and paths. Accounts too young for any backtest fold get the baseline with pooled calibration; their paths are drawn from the calibrated band with a single persistent z per path (conservative: fully correlated across the horizon).
 - **Refs:** ARCH §5.4; T2.7; A-010
 
+### D-028 · How mode invariance is enforced · 2026-09-29 · accepted
+- **Context:** T2.8 asks that the forecast module have "no import path to `config/strategy_modes.yaml`". Import-linter sees Python imports, not file reads.
+- **Decision:** three layers. (1) `dce.strategy` is the only reader of `strategy_modes.yaml`. (2) `.importlinter` forbids `dce.{forecast,capacity,response,metrics,demand}` from importing `dce.strategy`, `dce.runner`, or any strategy-aware module (transitively). (3) A test scans upstream source for `strategy_modes` / `dce.strategy` so a direct YAML read can't bypass the graph. Behavioral check: `dce.runner.forecast_stage` receives the full `RunConfig` (mode included) and the test asserts identical `DatasetForecast.artifact_hash()` across all modes, plus a sensitivity check (different seed → different hash) so the test can't pass vacuously. A planted violation was confirmed to fail both the linter and the test.
+- **Consequences:** `config/strategy_modes.yaml` created now with ARCH §7 values plus a `CUSTOM` entry; pydantic validation in T5.2.
+- **Refs:** IDEATION P1; ARCH §1, §9.4; D-001, D-013; T2.8
+
 ---
 
 ## 2. Assumptions register
@@ -450,4 +456,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-027, A-010
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** none
+
+### TL-016 · T2.8 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `config/strategy_modes.yaml` (GROWTH, STABILITY, D2C_EXPANSION, CUSTOM); `dce.strategy` loader; `dce.runner` (`RunConfig`, `build_run_config`, `forecast_stage`); import-linter contract extended to `dce.strategy` and `dce.runner`; mode-invariance tests.
+- **Files touched:** `config/strategy_modes.yaml`, `.importlinter`, `backend/dce/strategy/__init__.py`, `backend/dce/runner.py`, `backend/dce/tests/test_mode_invariance.py`
+- **Tests:** 9 added / 136 passing (all modes defined; identical forecast hash across 4 modes; hash sensitivity; source scan of 5 upstream packages; import-linter contract via subprocess)
+- **Decisions made:** D-028
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** the invariance test runs the forecast 6× (~25 s); acceptable, but the suite is getting slower.
 

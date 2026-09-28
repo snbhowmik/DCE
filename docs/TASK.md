@@ -98,7 +98,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
   *Accept:* per-account ratio distribution; churned/paused accounts excluded; contract end dates respected.
   *Depends:* T2.6
 
-- [ ] **T2.8 Mode-invariance guard**
+- [x] **T2.8 Mode-invariance guard**
   *Refs:* IDEATION P1 · ARCH §9.4
   *Accept:* test runs the forecast stage under every mode and asserts identical artifact hashes. Forecast module has no import path to `config/strategy_modes.yaml` (import-linter rule).
   *Depends:* T2.6
