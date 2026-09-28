@@ -125,7 +125,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 ## Phase 5 — Optimizer
 
 - [x] **T5.1 Core LP** (constraints 1–5, 9, 10 of ARCH §5.7; no spend, no co-man). *Depends:* T2.7, T3.3
-- [ ] **T5.2 Strategy modes from YAML** (pydantic-validated config; CUSTOM mode). *Depends:* T5.1
+- [x] **T5.2 Strategy modes from YAML** (pydantic-validated config; CUSTOM mode). *Depends:* T5.1
 - [ ] **T5.3 Spend co-optimization** (constraints 2, 6, 7 with response segments, lag distribution, evidence gate, exploration pool). *Depends:* T5.2, T4.2, T1.4
 - [ ] **T5.4 Co-man MILP extension** (constraint 8, min-active linking). *Depends:* T5.3
 - [ ] **T5.5 Soft constraints + infeasibility diagnostics.** *Depends:* T5.4

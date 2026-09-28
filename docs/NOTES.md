@@ -294,6 +294,10 @@ Every task completion, design decision, assumption, contract change, integrity e
   - *Eligibility (10):* D2C needs the (SKU, D2C, region) matrix window **and** `cold_chain_available`; B2B needs (SKU, B2B, account's primary region). Ineligible variables get upper bound 0.
 - **Refs:** ARCH §5.7; PRD FR-14, FR-17; T5.1
 
+### D-036 · Strategy mode schema · 2026-09-29 · accepted
+- **Decision:** `dce.strategy.models.ModeConfig` (pydantic, closed schema): quantiles in (0, 1), weights ≥ 0 over exactly {rev, pen, gw, spend, reach, cust}, floor/shares in [0, 1], `res_gate` in [−5, 5] (z units), optional `q_demand_d2c` (default 0.5), `onboarding_aqs_weights` cross-checked against `scoring.yaml` profiles, `onboarding_policy` ∈ {normal, paused_unless_exceptional}. CUSTOM = the YAML `CUSTOM` base plus user overrides (weights merged key-wise), re-validated; overrides on named modes are refused so a "GROWTH" run always means the configured GROWTH. `build_run_config` validates the mode; `mode_config` in the run record is the validated dump.
+- **Refs:** IDEATION §8; ARCH §7; PRD FR-15; T5.2
+
 ---
 
 ## 2. Assumptions register
@@ -566,6 +570,15 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Files touched:** `backend/dce/optimize/{solver,inputs,lp}.py`, `config/app.yaml`, `backend/pyproject.toml` (pulp 2.9, highspy), `backend/dce/tests/test_optimize_lp.py`
 - **Tests:** 8 added / 184 passing (surplus → carry then waste; mode-dependent D2C/B2B tradeoff matches hand-derived marginal values; infeasible floor soft + reported; concentration cap; ineligible region; carryover; 20 random instances satisfy balance and demand bounds; fixture end-to-end with duals)
 - **Decisions made:** D-034, D-035
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** none
+
+### TL-023 · T5.2 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.strategy.models` (`Weights`, `ModeConfig`, `validate_modes`, `custom_mode`); `dce.strategy.load_modes` / `resolve_mode`; `runner.build_run_config(mode, seed, mode_overrides=…)` now validates.
+- **Files touched:** `backend/dce/strategy/{__init__,models}.py`, `backend/dce/runner.py`, `backend/dce/tests/test_strategy_modes.py`
+- **Tests:** 12 added / 196 passing (YAML validates; 8 bad-value cases rejected; unknown AQS profile; CUSTOM overrides + validation + refusal on named modes + unknown mode; run config → optimizer params)
+- **Decisions made:** D-036
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** none
 

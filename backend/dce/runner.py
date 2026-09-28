@@ -16,7 +16,7 @@ from dce.capacity.model import CapacityForecast, capacity_forecast
 from dce.config import load_app_config, load_scoring_config
 from dce.forecast.run import DatasetForecast, forecast_dataset
 from dce.response.run import ResponseSet, fit_responses
-from dce.strategy import load_strategy_modes
+from dce.strategy import resolve_mode
 
 
 @dataclass(frozen=True)
@@ -37,14 +37,19 @@ class RunConfig:
         }
 
 
-def build_run_config(mode: str, seed: int | None = None, **overrides: Any) -> RunConfig:
-    modes = load_strategy_modes()
-    if mode not in modes:
-        raise KeyError(f"unknown mode {mode!r}; expected one of {sorted(modes)}")
+def build_run_config(
+    mode: str,
+    seed: int | None = None,
+    mode_overrides: dict[str, Any] | None = None,
+    **overrides: Any,
+) -> RunConfig:
+    """Validated run config. `mode_overrides` are CUSTOM-mode levers; `overrides` patch app,
+    scoring or mode_config sections (tests / scenarios)."""
+    mc = resolve_mode(mode, mode_overrides).model_dump()
     app = load_app_config() | overrides.get("app", {})
     return RunConfig(
         mode=mode,
-        mode_config=modes[mode] | overrides.get("mode_config", {}),
+        mode_config=mc | overrides.get("mode_config", {}),
         app=app,
         scoring=load_scoring_config() | overrides.get("scoring", {}),
         seed=int(seed if seed is not None else app["seed"]),
