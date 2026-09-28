@@ -67,7 +67,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 
 ## Phase 2 — Forecasting
 
-- [ ] **T2.1 Backtest harness**
+- [x] **T2.1 Backtest harness**
   *Refs:* ARCH §5.4 · PRD FR-7
   *Accept:* rolling-origin splitter (no leakage test: every feature timestamp < fold cutoff); MASE, pinball, coverage implemented and unit-tested.
   *Depends:* T1.2

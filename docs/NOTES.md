@@ -195,6 +195,11 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Consequences:** fill-history (our fill rate to the account) is not in AQS: it measures us, not the account. Payment reliability isn't in the contract.
 - **Refs:** IDEATION §9; ARCH §5.3; PRD FR-5; T1.4
 
+### D-021 · Backtest conventions · 2026-09-29 · accepted
+- **Context:** ARCH §5.4 fixes folds/horizon/step/metrics but not boundaries and scaling.
+- **Decision:** a fold's `origin` is its first forecast week; models receive only rows with `week_start < origin` (plus a separate known-future covariate frame). The newest fold's horizon ends at the last history week; older folds step back 4 weeks; folds leaving < 52 training weeks are dropped (config). Models implement `fit_predict(history, horizon, future) → series_id, week_start, q10, q50, q90`; the harness rejects wrong shapes. MASE uses P50 with a per-fold scale from that fold's training data (m = 52, falling back to m = 1 if the series is too short or the seasonal scale is 0; null if both are 0). Pinball is the mean over q ∈ {0.1, 0.5, 0.9}, also reported scaled by the MASE scale. Coverage = share of actuals in [q10, q90].
+- **Refs:** ARCH §5.4; PRD FR-7; T2.1
+
 ---
 
 ## 2. Assumptions register
@@ -338,4 +343,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-020
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** RES lift ignores seasonality around step-ups (confounding caveat, IDEATION §7.2); revisit with the T4 response model.
+
+### TL-009 · T2.1 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.forecast.backtest`: `Fold`, `rolling_origin_folds`, `Forecaster` protocol, `run_backtest` (shape-checked predictions joined to actuals), `mase_scale`, `pinball`, `score_backtest` (MASE, pinball per quantile + mean + scaled, coverage). Forecast settings added to `config/app.yaml`.
+- **Files touched:** `backend/dce/forecast/backtest.py`, `config/app.yaml`, `backend/dce/tests/test_backtest.py`
+- **Tests:** 7 added / 82 passing (fold geometry; short-history fold dropping; no-leakage spy model; shape enforcement; MASE scale incl. fallback and constant series; hand-computed MASE/pinball/coverage)
+- **Decisions made:** D-021
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** none
 

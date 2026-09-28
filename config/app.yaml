@@ -17,3 +17,10 @@ llm:
   model: claude-sonnet-5
   timeout_s: 60
   max_retries: 2
+forecast:
+  quantiles: [0.1, 0.5, 0.9]
+  backtest:
+    n_folds: 6
+    step_weeks: 4
+    min_train_weeks: 52
+  mase_seasonality: 52
