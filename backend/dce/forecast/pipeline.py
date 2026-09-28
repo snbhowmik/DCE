@@ -27,6 +27,7 @@ from dce.forecast.calibration import (
     apply_adjustments,
     conformal_adjustments,
     cross_fit_coverage,
+    pooled_adjustments,
 )
 from dce.forecast.lgbm import LgbmConfig, LightGBMQuantile
 from dce.forecast.paths import paths_frame, sample_paths
@@ -164,6 +165,22 @@ def run_forecast(
     bt = run_backtest(clean, models, folds, covariates)
     scores = score_backtest(bt, clean, cfg.mase_seasonality)
     selection = select_models(scores)
+    # Series too young for any fold get the baseline and pooled calibration.
+    unscored = set(series["series_id"].unique()) - set(selection["series_id"])
+    if unscored:
+        selection = pl.concat(
+            [
+                selection,
+                pl.DataFrame(
+                    {
+                        "series_id": sorted(unscored),
+                        "model": [BASELINE] * len(unscored),
+                        "reason": ["baseline: no backtest history"] * len(unscored),
+                    }
+                ),
+            ],
+            how="diagonal_relaxed",
+        ).sort("series_id")
     log.info(
         "forecast_selection",
         chosen=dict(selection.group_by("model").len().iter_rows()),
@@ -171,6 +188,20 @@ def run_forecast(
     )
     bt_chosen = bt.join(selection.select("series_id", "model"), on=["series_id", "model"])
     calibration = conformal_adjustments(bt_chosen, groups, cfg.calib_min_points)
+    if unscored:
+        pooled = pooled_adjustments(bt_chosen, groups)
+        extra = (
+            groups.filter(pl.col("series_id").is_in(sorted(unscored)))
+            .join(pooled, on=["channel", "tier"], how="left")
+            .select(
+                "series_id",
+                pl.col("a_lo").fill_null(0.0),
+                pl.col("a_hi").fill_null(0.0),
+                pl.lit(0, dtype=pl.Int64).alias("n"),
+                pl.lit(True).alias("pooled"),
+            )
+        )
+        calibration = pl.concat([calibration, extra]).sort("series_id")
     coverage = cross_fit_coverage(bt_chosen, groups, cfg.calib_min_points)
 
     preds = []

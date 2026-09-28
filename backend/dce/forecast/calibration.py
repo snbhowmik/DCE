@@ -66,6 +66,21 @@ def conformal_adjustments(
     )
 
 
+def pooled_adjustments(
+    bt: pl.DataFrame, groups: pl.DataFrame, pool_keys: tuple[str, ...] = ("channel", "tier")
+) -> pl.DataFrame:
+    """Adjustments per pool (for series without their own backtest rows)."""
+    b = bt.join(groups, on="series_id", how="left").with_columns(
+        (pl.col("q10") - pl.col("y")).alias("s_lo"), (pl.col("y") - pl.col("q90")).alias("s_hi")
+    )
+    rows = [
+        (*key, _conformal_q(g["s_lo"].to_numpy()), _conformal_q(g["s_hi"].to_numpy()))
+        for key, g in b.group_by(list(pool_keys))
+    ]
+    schema = {k: pl.String for k in pool_keys} | {"a_lo": pl.Float64, "a_hi": pl.Float64}
+    return pl.DataFrame(rows, schema=schema, orient="row")
+
+
 def apply_adjustments(pred: pl.DataFrame, adj: pl.DataFrame) -> pl.DataFrame:
     """q10' = max(0, min(q10 − a_lo, q50)); q90' = max(q90 + a_hi, q50)."""
     return (

@@ -93,7 +93,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
   *Accept:* per-series selection logged; baseline fallback works; calibrated coverage reported; `n_paths` block-bootstrapped paths produced.
   *Depends:* T2.3, T2.4, T2.5
 
-- [ ] **T2.7 B2B account forecasting**
+- [x] **T2.7 B2B account forecasting**
   *Refs:* ARCH §5.4 (order-to-commitment ratio)
   *Accept:* per-account ratio distribution; churned/paused accounts excluded; contract end dates respected.
   *Depends:* T2.6

@@ -234,6 +234,11 @@ Every task completion, design decision, assumption, contract change, integrity e
   - *Artifact hash* = SHA-256 of the sorted quantile table (CSV, 10 dp) + series order + rounded path bytes; used for mode invariance (T2.8).
 - **Refs:** ARCH §5.4; PRD FR-6, FR-8; D-004; T2.6
 
+### D-027 · B2B forecast mechanics · 2026-09-29 · accepted
+- **Context:** ARCH §5.4 says to model the order-to-commitment ratio per account, then multiply by commitment.
+- **Decision:** included = `status == active` with a positive commitment, a contract start, and no contract end before the first horizon week; everything else is excluded with a stated reason (pipeline, churned, paused, no commitment, contract ended). Weekly commitment = monthly × 12/52. Ratio series run from max(contract start, history start) to the last history week at account level (summed over SKU/region), and go through the same selection/calibration/path pipeline as D2C (so they get the same model choice rules). kg = ratio × weekly commitment; weeks starting after `contract_end` are 0 in quantiles and paths. Accounts too young for any backtest fold get the baseline with pooled calibration; their paths are drawn from the calibrated band with a single persistent z per path (conservative: fully correlated across the horizon).
+- **Refs:** ARCH §5.4; T2.7; A-010
+
 ---
 
 ## 2. Assumptions register
@@ -262,6 +267,11 @@ Every task completion, design decision, assumption, contract change, integrity e
 ### A-009 · Demand of different regions is independent in the v1 stress test (no cross-region correlation) · open
 - **Impact if wrong:** underestimates joint shortfall risk.
 - **Validate:** residual correlation analysis in backtests (T2.6); if significant, sample joint residuals.
+
+### A-010 · B2B contracts are not assumed to renew within the horizon · open
+- **Why assumed:** the contract carries no renewal field; assuming renewal would create demand the company has no agreement for.
+- **Impact if wrong:** B2B demand is understated after `contract_end`, freeing capacity that may actually be needed.
+- **How to validate:** ask Biokraft for renewal rates (Q-004); a renewal-probability field could be a contract change.
 
 ---
 
@@ -431,4 +441,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-026
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** fixture run with all five models takes ~5.5 s for 4 series; profile at realistic scale for NFR-1.
+
+### TL-015 · T2.7 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.forecast.b2b` (eligibility with reasons, ratio series, per-account ratio distribution (weekly and monthly), ratio forecast × commitment, contract-end zeroing in quantiles and paths). `dce.forecast.run.forecast_dataset` → `DatasetForecast` combining D2C and B2B (kg quantiles, paths, artifact hash, writer). Pipeline now handles series without backtest history (baseline + pooled calibration + band-derived paths).
+- **Files touched:** `backend/dce/forecast/{b2b,run,pipeline,calibration,paths}.py`, `backend/dce/tests/test_b2b_forecast.py`
+- **Tests:** 9 added / 127 passing (eligibility + reasons; ratio distribution; kg = ratio × commitment; churned and paused excluded; contract end zeroes quantiles and paths; expired contract excluded; young account → baseline with non-zero spread; dataset forecast combines channels, deterministic, writes artifacts)
+- **Decisions made:** D-027, A-010
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** none
 

@@ -64,6 +64,15 @@ def rescale_tails(
     return np.where(Rc < 0, Rc * lo, Rc * hi)
 
 
+def _band_residuals(
+    d10: np.ndarray, d90: np.ndarray, n_paths: int, gen: np.random.Generator
+) -> np.ndarray:
+    """Split-normal draws whose 10th/90th percentiles are d10/d90, one shared z per path
+    (fully persistent across the horizon, the conservative choice without residual data)."""
+    z = gen.standard_normal((n_paths, 1))
+    return np.where(z < 0, z * (-d10 / 1.2816), z * (d90 / 1.2816))
+
+
 def sample_paths(
     forecast: pl.DataFrame,
     bt: pl.DataFrame,
@@ -83,8 +92,12 @@ def sample_paths(
         q10, q50, q90 = (f[c].to_numpy() for c in ("q10", "q50", "q90"))
         E = residual_matrix(bt, sid, H)
         gen = seeded_rng(seed, "forecast_paths", sid)
-        R = block_bootstrap(E, n_paths, block, gen)
-        R = rescale_tails(R, E[np.isfinite(E)], q10 - q50, q90 - q50)
+        if not np.isfinite(E).any():
+            # No backtest residuals (series too young): draw from the band itself.
+            R = _band_residuals(q10 - q50, q90 - q50, n_paths, gen)
+        else:
+            R = block_bootstrap(E, n_paths, block, gen)
+            R = rescale_tails(R, E[np.isfinite(E)], q10 - q50, q90 - q50)
         paths[i] = np.maximum(q50[None, :] + R, 0.0)
     return sids, paths
 
