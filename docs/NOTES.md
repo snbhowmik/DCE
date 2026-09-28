@@ -250,6 +250,10 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decision:** the plan's week is inferred from history per dataset: compare planned batch counts in history weeks with realized counts by batch start week vs end week; the lower mean absolute difference wins, ties → output (end) week; override via `config/app.yaml: capacity.plan_alignment`. With start alignment, output lands `median(batch duration)` weeks later. Estimates use batches ending in the last 104 weeks. p_fail ~ Beta(1 + failed, 1 + non-failed), **one draw per path** held for the whole horizon (a bad-luck quarter is a coherent scenario, not independent weekly noise). Yield ratio is bootstrapped from non-failed batches (`partial` included). Plan lines without batch history get the prior and ratio 1.0. Batch rows are iterated in a fixed sort order because RNG draws depend on it (a determinism bug caught by test).
 - **Refs:** ARCH §5.5; PRD FR-11; T3.1
 
+### D-030 · Co-man timing and reliability · 2026-09-29 · accepted
+- **Decision:** earliest activation = max(decision week, Monday of `available_from`); first output = activation + `lead_time_weeks`. A weekly volume is 0 or clipped to [min_commit, max]. Reliability = delivered/requested per activity week (weeks with 0 requested ignored; over-delivery capped at 1 so plans never count on it), sampled i.i.d. per path × week (weekly delivery slips look idiosyncratic, unlike batch failure rates). No activity → Beta(9, 1) prior (mean 0.9, config `capacity.coman_reliability_prior`), flagged `reliability_from_prior`.
+- **Refs:** ARCH §5.5, §5.7 constraint 8; PRD FR-12; T3.2
+
 ---
 
 ## 2. Assumptions register
@@ -479,4 +483,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-029
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** none
+
+### TL-018 · T3.2 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.capacity.coman`: `CoManPartner` (activation/output timing, horizon output mask, volume snapping, reliability sampling, delivered paths, summary) and `load_partners` from contracts + activity.
+- **Files touched:** `backend/dce/capacity/coman.py`, `backend/dce/tests/test_capacity_coman.py`
+- **Tests:** 5 added / 148 passing (lead time + availability incl. mid-week `available_from`; output mask; volume bounds; empirical haircut incl. over-delivery cap and 0/0 rows; prior when no history; fixture)
+- **Decisions made:** D-030
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** min-active-weeks linking is an optimizer constraint (T5.4).
 
