@@ -83,7 +83,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
   *Accept:* uses planned spend (known future) but never realized future data (test); three quantile models or one with quantile objective per q; no quantile crossing (sort fix + test).
   *Depends:* T2.1
 
-- [ ] **T2.5 Anomaly detection and handling**
+- [x] **T2.5 Anomaly detection and handling**
   *Refs:* IDEATION §7.2 (viral content) · PRD FR-9
   *Accept:* injected spike in a fixture is flagged, winsorized for training, and not present in forward P50.
   *Depends:* T2.2

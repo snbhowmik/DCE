@@ -218,6 +218,12 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Consequences:** `dce.forecast.covariates.build_covariates` reads only `marketing_plan`, `regions`, `skus`, `b2b_accounts`, and the calendar (enforced by test). Realized price isn't a feature: future realized price is unknown at forecast time.
 - **Refs:** ARCH §5.4; T2.4
 
+### D-025 · Anomaly detection runs before model fitting, on D2C only · 2026-09-29 · accepted
+- **Context:** ARCH §5.4 says "robust z-score on backtest residuals". But the models must train on winsorized data, so detection has to happen before any model is fit; using model residuals would be circular.
+- **Decision:** residual = y − centered 9-week rolling median; robust z = 0.6745·(r − median r)/MAD per series (mean-absolute-deviation fallback when MAD = 0; no flags if both are 0). |z| > 3.5 → `is_anomaly`; training uses `y_clean` = baseline + residual clipped to ±3.5σ̂ (≥ 0). Negative flags in censored weeks are dropped (censoring explains them). Default scope is D2C (`config/scoring.yaml: anomaly.channels`): viral spikes are a D2C phenomenon, and lumpy B2B orders would otherwise be flagged constantly. Flags are reported via `anomaly_report`.
+- **Consequences:** deviation from the ARCH wording (residual source); intent (flag, winsorize, never extrapolate) unchanged.
+- **Refs:** IDEATION §7.2; ARCH §5.4; PRD FR-9; T2.5
+
 ---
 
 ## 2. Assumptions register
@@ -397,4 +403,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-024
 - **Deviations from ARCH:** none (lag set is ARCH's, counted from the origin in the direct formulation)
 - **Known issues / follow-ups:** ~0.5 s per fit on the fixture; watch NFR-1 once the full backtest runs (T2.6).
+
+### TL-013 · T2.5 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.forecast.anomaly`: `detect_anomalies` (robust z, flags, winsorized `y_clean`), `anomaly_report`, `AnomalyConfig` from `config/scoring.yaml`.
+- **Files touched:** `backend/dce/forecast/anomaly.py`, `config/scoring.yaml`, `backend/dce/tests/test_anomaly.py`
+- **Tests:** 6 added / 107 passing (injected 8× spikes in the fixture flagged and winsorized; stockout dip not flagged; B2B not flagged; forward P50 of SeasonalNaive / WindowAverage / LightGBM stays < 1.6× pre-spike level on cleaned data while the raw spike leaks into naive rules; constant/zero series never flagged; < 1% false flags on Gaussian noise)
+- **Decisions made:** D-025
+- **Deviations from ARCH:** residual source (D-025)
+- **Known issues / follow-ups:** none
 

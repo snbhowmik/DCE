@@ -29,3 +29,9 @@ aqs:
     balanced:          {volume: 0.20, stability: 0.20, reach: 0.15, margin: 0.20, reliability: 0.15, penalty: 0.10, concentration: 0.50}
     reach_heavy:       {volume: 0.25, stability: 0.10, reach: 0.35, margin: 0.15, reliability: 0.10, penalty: 0.05, concentration: 0.30}
     reliability_heavy: {volume: 0.10, stability: 0.35, reach: 0.05, margin: 0.15, reliability: 0.30, penalty: 0.15, concentration: 0.80}
+
+# Anomaly detection on weekly demand (IDEATION §7.2 viral content; ARCH §5.4; PRD FR-9).
+anomaly:
+  z_threshold: 3.5            # robust z = 0.6745·(r − median r)/MAD(r)
+  window_weeks: 9             # centered rolling median baseline
+  channels: [D2C]             # B2B lumpiness is not a viral anomaly
