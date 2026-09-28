@@ -78,7 +78,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 - [x] **T2.3 Statistical models**: AutoETS, AutoTheta via statsforecast.
   *Depends:* T2.1
 
-- [ ] **T2.4 LightGBM global quantile model**
+- [x] **T2.4 LightGBM global quantile model**
   *Refs:* ARCH §5.4 features list
   *Accept:* uses planned spend (known future) but never realized future data (test); three quantile models or one with quantile objective per q; no quantile crossing (sort fix + test).
   *Depends:* T2.1

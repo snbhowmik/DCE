@@ -211,6 +211,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decision:** keep `AutoETS(season_length=52)` and `AutoTheta(season_length=52)` as specified; accept ETS as non-seasonal (weekly seasonality is carried by SeasonalNaive and LightGBM calendar features, and selection picks per series). P50 = model mean, P10/P90 = 80% interval, clipped ≥ 0 with P50-anchored crossing guard. `fallback_model=Naive()` for series the model can't fit; `n_jobs=1` for determinism. Series whose history stops before the origin are forecast through the gap and cut to the horizon.
 - **Refs:** ARCH §5.4; T2.3
 
+### D-024 · LightGBM formulation: direct multi-horizon, origin-normalized · 2026-09-29 · accepted
+- **Context:** ARCH lists lags 1–4 with a 13-week horizon. Recursive forecasting would feed predictions back as lags; that compounds error and makes the leakage boundary harder to audit.
+- **Options:** (A) recursive one-step model; (B) one model per h (39 models); (C) one direct model per quantile with `h` as a feature.
+- **Decision:** C. A training row is (series, origin o, step h) → y[o+h]. History features (lags 1–4, 8, 13 counted back from o; seasonal y[o+h−52], only if ≤ o; rolling mean/std over 4 and 13 weeks) read weeks ≤ o only. Known-future features at the target week: sin/cos week-of-year, month, Indian holiday count + major-festival flag (`holidays` package), adstocked **planned** spend (θ = 0.5) and its ratio to the origin's, region tier, channel, list/contract price. Values are divided by the series' 13-week mean + 1 kg (`log_scale` kept as a feature) so one global model spans regions and accounts. Native `lgb.train` (no scikit-learn dependency), `deterministic`, single thread, derived seed. Rows sorted across quantiles, clipped at 0. Falls back to WindowAverage(8) below 200 training rows.
+- **Consequences:** `dce.forecast.covariates.build_covariates` reads only `marketing_plan`, `regions`, `skus`, `b2b_accounts`, and the calendar (enforced by test). Realized price isn't a feature: future realized price is unknown at forecast time.
+- **Refs:** ARCH §5.4; T2.4
+
 ---
 
 ## 2. Assumptions register
@@ -381,4 +388,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-023
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** none
+
+### TL-012 · T2.4 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.forecast.lgbm.LightGBMQuantile` (direct multi-horizon global quantile model, three quantile boosters), `dce.forecast.covariates` (known-at-forecast-time covariate frame), `dce.forecast.calendar` (weekly Indian holiday counts). Deps: lightgbm 4.7, holidays 0.105.
+- **Files touched:** `backend/dce/forecast/{lgbm,covariates,calendar,baselines,backtest}.py`, `backend/pyproject.toml`, `backend/dce/tests/test_lgbm.py`
+- **Tests:** 8 added / 101 passing (poisoning post-origin data leaves features unchanged; every training target lies after its origin and inside history; raising planned future spend raises the forecast; covariates unchanged by tampering with realized marketing/orders but changed by the plan; no crossing, non-negative, deterministic; small-data fallback; horizon/history alignment; backtest smoke)
+- **Decisions made:** D-024
+- **Deviations from ARCH:** none (lag set is ARCH's, counted from the origin in the direct formulation)
+- **Known issues / follow-ups:** ~0.5 s per fit on the fixture; watch NFR-1 once the full backtest runs (T2.6).
 
