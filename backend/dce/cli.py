@@ -23,6 +23,28 @@ def version() -> None:
     typer.echo(__version__)
 
 
+@app.command("ingest")
+def ingest_cmd(
+    world_path: Path,
+    as_json: bool = typer.Option(False, "--json", help="Print the full JSON report."),
+) -> None:
+    """Validate a world folder, write the report and Parquet, and register the dataset."""
+    from dce.ingest import PathNotAllowed, ingest
+    from dce.store.db import make_engine
+
+    try:
+        report = ingest(world_path, engine=make_engine())
+    except (PathNotAllowed, FileNotFoundError) as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(2) from exc
+    if as_json:
+        typer.echo(json.dumps(report.to_dict(), indent=2, ensure_ascii=False))
+    else:
+        typer.echo(report.to_markdown())
+        typer.echo(f"report: data/processed/{report.dataset_hash}/validation_report.json")
+    raise typer.Exit(0 if report.ok else 1)
+
+
 contract_app = typer.Typer(no_args_is_help=True, help="Data contract tools.")
 app.add_typer(contract_app, name="contract")
 

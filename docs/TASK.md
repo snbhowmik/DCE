@@ -44,7 +44,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 
 ## Phase 1 — Ingestion and metrics
 
-- [ ] **T1.1 Ingestion + validation report**
+- [x] **T1.1 Ingestion + validation report**
   *Refs:* ARCH §5.1 · PRD FR-1, FR-3
   *Accept:* `dce ingest data/fixtures/tiny_world` outputs a report (JSON + readable summary) and Parquet; the path guard rejects `../` and absolute paths outside allowed dirs (test).
   *Depends:* T0.3, T0.4

@@ -158,6 +158,11 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decision:** `run_id = run_<UTC yyyymmddThhmmss>_<8 hex>` (sortable; unique per execution; never an input to any computation). `dataset_hash` = SHA-256 over sorted `filename:sha256` lines of contract files only (13 CSVs + manifest), so READMEs/markers don't change it and file swaps do. `config_hash` = SHA-256 of canonical JSON (sorted keys). `git_sha` gets a `-dirty` suffix when tracked files differ from HEAD; `unknown` outside git. Sub-seeds = first 63 bits of SHA-256(`seed|module|series…`). `runs` also stores the full effective config (JSON) plus `kind` and `parent_run_id` (for scenarios/onboarding re-solves).
 - **Refs:** ARCH §5.12, §8; T0.4
 
+### D-017 · Ingest severities and failure behavior · 2026-09-29 · accepted
+- **Context:** FR-1 lists checks without severities.
+- **Decision:** errors (block use): contract violations, history < 104 weeks, `capacity_plan` not covering every week from history start to 13 weeks past history end. Warnings: rows outside the manifest window, weeks with no orders inside a channel×region's active span, days without marketing rows, `marketing_plan` ending before the 13-week horizon, active accounts without a commitment. A failing dataset still gets `validation_report.{json,md}` and a `datasets` row (with `n_errors`), but no Parquet, so no downstream module can load it. The path guard resolves symlinks and requires a path strictly inside `data/incoming/` or `data/fixtures/` (the roots themselves are refused).
+- **Refs:** ARCH §3, §5.1, §9.5; PRD FR-1, FR-3; T1.1
+
 ---
 
 ## 2. Assumptions register
@@ -265,4 +270,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-016
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** no migrations (schema created with `create_all`); revisit if the schema changes after data exists.
+
+### TL-005 · T1.1 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce ingest <world>`: path guard → contract validation → continuity checks → `validation_report.{json,md}` → Parquet under `data/processed/<dataset_hash>/` → `datasets` row. `load_dataset(hash)` for downstream modules. tiny_world ingests with 0 errors / 0 warnings.
+- **Files touched:** `backend/dce/ingest/{core,checks,__init__}.py`, `backend/dce/cli.py`, `backend/dce/tests/test_ingest.py`
+- **Tests:** 13 added / 41 passing (CLI end-to-end; idempotent hash; guard rejects `../`, `/etc`, `/tmp`, `../dgp`, root dirs, symlink escape; accepts relative + absolute inside; invalid world → report, no Parquet; short history → error)
+- **Decisions made:** D-017
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** none
 
