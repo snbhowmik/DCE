@@ -258,6 +258,17 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decision:** the capacity forecast covers the single production product line (A-001); more than one raises `NotImplementedError` pointing at A-001 rather than silently picking one. Shelf life = min over that line's production SKUs; carryover = 0 if < 7 days, else min(⌊shelf/7⌋, `capacity.carryover_cap_weeks` = 1 per A-003). Waste cost = `capacity.waste_cost_inr_per_kg`, defaulting to the unit production cost (value lost on expiry). `at_quantile(q)` is the optimizer's `Cap_in` accessor. `runner.capacity_stage` receives the full RunConfig but uses only app + seed; capacity hashes are asserted equal across modes too (P1 covers CAP).
 - **Refs:** ARCH §1, §5.5; PRD FR-13; A-001, A-003; T3.3
 
+### D-032 · Response model fitting · 2026-09-29 · accepted
+- **Context:** ARCH §5.6 specifies adstock + Hill with a spend-free organic baseline, bootstrap uncertainty, and extrapolation/confounding guards.
+- **Decision:**
+  - *Organic baseline* = intercept + linear trend + 2 Fourier pairs of the 52-week season (week-of-year aligned), estimated **jointly** with the lift (a separate spend-free fit would soak up part of the spend effect).
+  - *Estimation:* variable projection: L-BFGS-B over (θ ∈ [0, 0.9], α ∈ [0.5, 3], log κ within [0.1, 10] × mean adstock) from 4 starts; organic coefficients unconstrained and β ≥ 0 solved exactly by NNLS inside.
+  - *Inputs:* weekly anomaly-cleaned D2C demand per region (summed over SKUs) and realized D2C spend (all campaign types pooled, per ARCH v1).
+  - *Uncertainty:* moving-block (8-week) residual bootstrap, 40 refits; P5–P95 for θ, α, κ, β and lift at mean spend. Coverage verified across replications (a single 90% interval may miss).
+  - *Guards:* `low_confidence` with reasons if spend CV < 0.10, if elasticity at mean spend is outside [0, 0.8], or if the bootstrap lift CI width / median > 1.5 (or median ≤ 0). Spend cap = max observed weekly spend × 1.5. Regions with < 52 weeks of D2C demand or no spend are skipped with a reason.
+  - `steady_lift(s)` evaluates lift at constant weekly spend s (adstock s/(1−θ)); `lag_weights(n)` gives the geometric lag profile for the optimizer.
+- **Refs:** IDEATION §7.2 (causality caution); ARCH §5.6; T4.1
+
 ---
 
 ## 2. Assumptions register
@@ -505,4 +516,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-031
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** none
+
+### TL-020 · T4.1 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.response.fit` (`ResponseConfig`, adstock, Hill, organic design, variable-projection fit, block bootstrap, guards, `ResponseFit` with steady-state lift, lag weights, summary) and `dce.response.run` (`weekly_region_inputs`, `fit_responses` → `ResponseSet` with hash); `runner.response_stage`. Response settings in `config/app.yaml`.
+- **Files touched:** `backend/dce/response/{fit,run}.py`, `backend/dce/runner.py`, `config/app.yaml`, `backend/dce/tests/test_response_fit.py`
+- **Tests:** 8 added / 167 passing (recovers test-only θ/α/κ/β and the lift curve within 12%; CI coverage ≥ 60% over 8 replications for θ and lift; cap + lag weights; constant spend → low_confidence; no true effect → low_confidence; implausible-elasticity flag; deterministic; fixture driver + identical hash across modes)
+- **Decisions made:** D-032
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** full test suite now ~65 s; consider pytest-xdist.
 

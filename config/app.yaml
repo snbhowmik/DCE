@@ -31,3 +31,15 @@ capacity:
   coman_reliability_prior: [9.0, 1.0]   # Beta prior on delivered/requested when no activity
   carryover_cap_weeks: 1        # A-003: carryover ≤ 1 week by default
   waste_cost_inr_per_kg: null   # null → unit production cost
+response:
+  theta_bounds: [0.0, 0.9]
+  alpha_bounds: [0.5, 3.0]
+  kappa_rel_bounds: [0.1, 10.0]   # κ relative to mean adstock
+  fourier_k: 2
+  n_starts: 4
+  n_boot: 40
+  boot_block_weeks: 8
+  elasticity_bounds: [0.0, 0.8]   # plausible demand elasticity to spend at mean spend
+  max_rel_ci_width: 1.5           # (P95 − P5) / median of lift at mean spend
+  min_spend_cv: 0.10              # weekly spend must vary to identify a response
+  extrapolation_factor: 1.5       # recommended spend ≤ max observed weekly spend × factor

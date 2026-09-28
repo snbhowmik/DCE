@@ -113,7 +113,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 
 ## Phase 4 — Response model
 
-- [ ] **T4.1 Adstock + Hill fit per region**
+- [x] **T4.1 Adstock + Hill fit per region**
   *Refs:* ARCH §5.6
   *Accept:* recovers parameters on a fixture generated with **known test-only parameters inside the test file** (this is a unit test of the fitter, not evaluation); bootstrap CIs; `low_confidence` flag logic.
   *Depends:* T1.3
