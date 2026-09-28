@@ -105,7 +105,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 
 ## Phase 3 — Capacity
 
-- [ ] **T3.1 In-house yield model** (Beta-Binomial failure, empirical yield ratio, paths aligned with forecast horizon). *Depends:* T1.1
+- [x] **T3.1 In-house yield model** (Beta-Binomial failure, empirical yield ratio, paths aligned with forecast horizon). *Depends:* T1.1
 - [ ] **T3.2 Co-man model** (lead time, min/max, reliability haircut from `coman_activity`). *Depends:* T1.1
 - [ ] **T3.3 Capacity quantiles + perishability config**
   *Accept:* capacity quantiles and paths; carryover rule from shelf life; test that a failed-batch-heavy history widens the P10–P90 band.

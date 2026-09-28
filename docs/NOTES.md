@@ -245,6 +245,11 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Consequences:** `config/strategy_modes.yaml` created now with ARCH §7 values plus a `CUSTOM` entry; pydantic validation in T5.2.
 - **Refs:** IDEATION P1; ARCH §1, §9.4; D-001, D-013; T2.8
 
+### D-029 · In-house capacity model details · 2026-09-29 · accepted
+- **Context:** ARCH §5.5 fixes the model; two details are open: which batch date `capacity_plan.week_start` refers to, and how parameter uncertainty enters paths.
+- **Decision:** the plan's week is inferred from history per dataset: compare planned batch counts in history weeks with realized counts by batch start week vs end week; the lower mean absolute difference wins, ties → output (end) week; override via `config/app.yaml: capacity.plan_alignment`. With start alignment, output lands `median(batch duration)` weeks later. Estimates use batches ending in the last 104 weeks. p_fail ~ Beta(1 + failed, 1 + non-failed), **one draw per path** held for the whole horizon (a bad-luck quarter is a coherent scenario, not independent weekly noise). Yield ratio is bootstrapped from non-failed batches (`partial` included). Plan lines without batch history get the prior and ratio 1.0. Batch rows are iterated in a fixed sort order because RNG draws depend on it (a determinism bug caught by test).
+- **Refs:** ARCH §5.5; PRD FR-11; T3.1
+
 ---
 
 ## 2. Assumptions register
@@ -465,4 +470,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-028
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** the invariance test runs the forecast 6× (~25 s); acceptable, but the suite is getting slower.
+
+### TL-017 · T3.1 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.capacity.inhouse`: `InHouseConfig`, plan-alignment inference, Beta-Binomial failure + empirical yield estimation per facility × line, `simulate_inhouse` → `InHouseCapacity` (line paths [L, P, H], planned kg, params frame with p_fail CI and ratio quantiles, total paths per product line). Capacity config added to `config/app.yaml`.
+- **Files touched:** `backend/dce/capacity/inhouse.py`, `config/app.yaml`, `backend/dce/tests/test_capacity_inhouse.py`
+- **Tests:** 7 added / 143 passing (posterior counts; ratios exclude failures; path mean = planned × ratio × (1 − p̄_fail); bounds; deterministic by seed; alignment inference both ways; start-aligned output shift; prior for lines without history; fixture smoke)
+- **Decisions made:** D-029
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** none
 
