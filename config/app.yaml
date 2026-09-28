@@ -1,0 +1,19 @@
+# Global application settings (ARCH §8).
+seed: 20260929
+horizon_weeks: 13
+horizon_months: 3
+n_paths: 500
+week_start: monday
+currency: INR
+unit: kg
+paths:
+  incoming: data/incoming
+  fixtures: data/fixtures
+  processed: data/processed
+  reports: reports
+  db: data/processed/dce.sqlite
+llm:
+  provider: anthropic
+  model: claude-sonnet-5
+  timeout_s: 60
+  max_retries: 2

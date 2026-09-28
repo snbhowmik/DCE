@@ -1,0 +1,25 @@
+# data: DGP drops and derived artifacts never enter git
+data/incoming/*
+!data/incoming/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# secrets
+.env
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+*.egg-info/
+
+# app state
+*.sqlite
+*.db
+
+# node
+node_modules/

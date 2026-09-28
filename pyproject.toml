@@ -1,0 +1,9 @@
+# Virtual uv workspace root so `uv run dce ...` works from the repo root.
+[tool.uv.workspace]
+members = ["backend"]
+
+[tool.uv.sources]
+biokraft-dce = { workspace = true }
+
+[dependency-groups]
+dev = ["biokraft-dce"]
