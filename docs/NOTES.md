@@ -224,6 +224,16 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Consequences:** deviation from the ARCH wording (residual source); intent (flag, winsorize, never extrapolate) unchanged.
 - **Refs:** IDEATION §7.2; ARCH §5.4; PRD FR-9; T2.5
 
+### D-026 · Selection, calibration and path sampling details · 2026-09-29 · accepted
+- **Context:** ARCH §5.4 specifies the methods; the operational details matter for honesty and for downstream consistency.
+- **Decision:**
+  - *Selection:* per series, the lowest mean pinball among models whose MASE is strictly below SeasonalNaive(52)'s; otherwise SeasonalNaive with reason "baseline fallback". If the baseline MASE is undefined (constant training history), lowest pinball wins. SeasonalNaive is always computed even if removed from config. Backtests, selection and calibration are scored on the anomaly-cleaned series (we don't try to predict spikes).
+  - *Calibration:* one-sided CQR per side (α = 0.1): a = the ⌈(n+1)(1−α)⌉/n quantile of `q10 − y` (resp. `y − q90`) over the chosen model's backtest rows; per series when n ≥ 30, else pooled by (channel, tier). Adjustments can narrow as well as widen. P10 is clipped at 0.
+  - *Reported coverage:* leave-one-fold-out cross-fit (calibrate on the other folds, measure on the held-out fold), so the number isn't tautologically 80%. True out-of-sample coverage is measured on the evaluator holdout (T11).
+  - *Paths:* block bootstrap (block = 4 weeks) over the chosen model's fold residual trajectories, drawn at matching horizon steps; residuals median-centered; tails rescaled per step so path P10/P90 ≈ calibrated bands (paths and displayed bands agree, which the stress test and breach probabilities rely on). Seed = derive(seed, "forecast_paths", series_id). Clipped at 0.
+  - *Artifact hash* = SHA-256 of the sorted quantile table (CSV, 10 dp) + series order + rounded path bytes; used for mode invariance (T2.8).
+- **Refs:** ARCH §5.4; PRD FR-6, FR-8; D-004; T2.6
+
 ---
 
 ## 2. Assumptions register
@@ -412,4 +422,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-025
 - **Deviations from ARCH:** residual source (D-025)
 - **Known issues / follow-ups:** none
+
+### TL-014 · T2.6 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.forecast.selection` (baseline-gated selection with reasons), `dce.forecast.calibration` (split-conformal per series/pooled, application, cross-fit coverage), `dce.forecast.paths` (block bootstrap, tail rescaling, long-form writer), `dce.forecast.pipeline` (`ForecastConfig`, `run_forecast` → `ForecastSet` with quantiles incl. raw bands, paths, selection, scores, coverage, calibration, anomalies; `artifact_hash`, `write`).
+- **Files touched:** `backend/dce/forecast/{selection,calibration,paths,pipeline}.py`, `backend/dce/tests/test_forecast_pipeline.py`
+- **Tests:** 11 added / 118 passing (selection incl. MASE gate, fallback and undefined baseline; conformal widening to ≈80% under cross-fit; pooling of small series; adjustment ordering/non-negativity; block structure preserved; path quantiles match calibrated bands; deterministic + seed-sensitive hash; artifact writing; perfect-seasonal series falls back to baseline; full fixture run with all five models)
+- **Decisions made:** D-026
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** fixture run with all five models takes ~5.5 s for 4 series; profile at realistic scale for NFR-1.
 

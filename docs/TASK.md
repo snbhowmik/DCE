@@ -88,7 +88,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
   *Accept:* injected spike in a fixture is flagged, winsorized for training, and not present in forward P50.
   *Depends:* T2.2
 
-- [ ] **T2.6 Model selection + conformal calibration + sample paths**
+- [x] **T2.6 Model selection + conformal calibration + sample paths**
   *Refs:* ARCH §5.4 · PRD FR-8, FR-6
   *Accept:* per-series selection logged; baseline fallback works; calibrated coverage reported; `n_paths` block-bootstrapped paths produced.
   *Depends:* T2.3, T2.4, T2.5
