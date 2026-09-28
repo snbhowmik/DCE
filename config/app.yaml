@@ -44,3 +44,12 @@ response:
   min_spend_cv: 0.10              # weekly spend must vary to identify a response
   extrapolation_factor: 1.5       # recommended spend ≤ max observed weekly spend × factor
   pwl_segments: 6                 # K piecewise-linear segments per region for the optimizer
+optimize:
+  month_weeks: [4, 4, 5]            # 13-week horizon → 3 planning months
+  q_demand_d2c: 0.5                 # D2C demand quantile planned against (modes may override)
+  goodwill_fraction_of_price: 0.25  # g_r: goodwill cost per unmet D2C kg as a share of D2C price
+  concentration_cap: 0.30           # s_max: max share of monthly capacity for one account
+  floor_penalty_inr_per_kg: 1.0e6   # soft B2B service-floor violation cost
+  initial_inventory_kg: 0.0
+  time_limit_s: 10
+  mip_gap: 0.005

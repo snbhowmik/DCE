@@ -19,6 +19,8 @@ dependencies = [
     "statsforecast>=2.0",
     "lightgbm>=4.3",
     "holidays>=0.50",
+    "highspy>=1.7",
+    "pulp>=2.9,<3",
 ]
 
 [project.scripts]

@@ -276,6 +276,24 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Consequences:** below an S-curve's inflection the LP sees slightly optimistic lift at small spend; it only matters for spend levels an optimizer wouldn't choose on the true curve anyway.
 - **Refs:** ARCH §5.6, §5.7; D-006; T4.2
 
+### D-034 · PuLP pinned to 2.9 with HiGHS via highspy; duals read from the live model · 2026-09-29 · accepted
+- **Context:** PuLP 4.0 (current) is a Rust-core rewrite with an incompatible modeling API; PuLP 2.9's HiGHS interface doesn't populate `constraint.pi`.
+- **Decision:** pin `pulp>=2.9,<3` + `highspy`. After an LP solve, duals are read from `prob.solverModel.getSolution().row_dual` in `prob.constraints` order (the order PuLP adds rows); shadow price = −row_dual for maximization. Verified on a textbook LP (duals 2 and 1). HiGHS runs single-threaded (determinism), 10 s limit, 0.5% MIP gap.
+- **Consequences:** upgrading PuLP needs a port; the dual-extraction trick is covered by a test.
+- **Refs:** ARCH §2, §5.7; D-006; T5.1, T5.6
+
+### D-035 · Allocation LP conventions · 2026-09-29 · accepted
+- **Context:** ARCH §5.7 leaves several modeling details implicit.
+- **Decision:**
+  - *Planning months:* the 13-week horizon is split 4-4-5 (`optimize.month_weeks`). Weekly detail stays in risk/stress.
+  - *Monthly parameters* are quantiles of monthly **sums** of paths (capacity at `q_capacity`, B2B orders at `q_demand_b2b`, D2C demand at `q_demand_d2c`, default 0.5): a month's P15 capacity is the 15th percentile of the month's total, not the sum of weekly P15s (which would be far too pessimistic).
+  - *Commit[a,m]* = forecast B2B orders (ratio × commitment) at the quantile, per ARCH; the service floor applies to it.
+  - *Constraint 1* is an equality: all capacity is allocated, carried, or wasted. Initial inventory = 0 (not in the contract). End-of-horizon inventory is allowed up to the carry limit (it can be sold the week after). Carry limit = carryover weeks × average weekly capacity of the month.
+  - *Goodwill cost* g_r = 25% of the D2C price per unmet kg (config). *Reach bonus* = w_reach × mean price × normalized reach (ln(1 + outlets) × regions served, scaled to [0, 1]) so it's commensurate with ₹.
+  - *Soft floor:* y + f ≥ φ·Commit with f penalized at ₹1e6/kg and reported via `floor_violations()`. Floors apply only where the account is eligible. Concentration uses in-house + co-man supply once co-man exists.
+  - *Eligibility (10):* D2C needs the (SKU, D2C, region) matrix window **and** `cold_chain_available`; B2B needs (SKU, B2B, account's primary region). Ineligible variables get upper bound 0.
+- **Refs:** ARCH §5.7; PRD FR-14, FR-17; T5.1
+
 ---
 
 ## 2. Assumptions register
@@ -539,6 +557,15 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Files touched:** `backend/dce/response/pwl.py`, `config/app.yaml`, `backend/dce/tests/test_response_pwl.py`
 - **Tests:** 9 added / 176 passing (K segments, non-increasing non-negative slopes, cap = max × 1.5, no lift beyond cap, for α ∈ {0.6, 1, 1.6, 2.8}; PWL is a concave, monotone function; concave fits: chords below the curve with error < 10% of max; S-curve envelope; majorant unit case; zero response)
 - **Decisions made:** D-033
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** none
+
+### TL-022 · T5.1 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.optimize.solver` (HiGHS wrapper + named duals), `dce.optimize.inputs` (`Month`, `split_months`, `ModeParams`, `PlanInputs`, `monthly_quantile`, eligibility, `build_inputs` from forecast + capacity + tables), `dce.optimize.lp` (`build_lp` / `finalize_lp` with extension hooks for supply and demand terms, `solve_allocation` → `PlanResult` with allocation table, floor violations, duals). Optimizer settings in `config/app.yaml`.
+- **Files touched:** `backend/dce/optimize/{solver,inputs,lp}.py`, `config/app.yaml`, `backend/pyproject.toml` (pulp 2.9, highspy), `backend/dce/tests/test_optimize_lp.py`
+- **Tests:** 8 added / 184 passing (surplus → carry then waste; mode-dependent D2C/B2B tradeoff matches hand-derived marginal values; infeasible floor soft + reported; concentration cap; ineligible region; carryover; 20 random instances satisfy balance and demand bounds; fixture end-to-end with duals)
+- **Decisions made:** D-034, D-035
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** none
 
