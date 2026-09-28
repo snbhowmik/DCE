@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -228,3 +228,16 @@ def load_dataset(dataset_hash: str) -> dict[str, pl.DataFrame]:
     if not (out / "orders.parquet").is_file():
         raise DatasetNotFound(f"no valid processed dataset {dataset_hash}")
     return {t.name: pl.read_parquet(out / f"{t.name}.parquet") for t in TABLES}
+
+
+def load_manifest(dataset_hash: str) -> dict[str, Any] | None:
+    path = processed_path(dataset_hash) / "manifest.json"
+    return json.loads(path.read_text()) if path.is_file() else None
+
+
+def load_history_window(dataset_hash: str, tables: dict[str, pl.DataFrame]) -> tuple[date, date]:
+    """(first Monday, last Monday) of the dataset's history."""
+    window = history_window(tables, load_manifest(dataset_hash))
+    if window is None:
+        raise DatasetNotFound(f"cannot determine history window for {dataset_hash}")
+    return window

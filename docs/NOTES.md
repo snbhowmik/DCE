@@ -163,6 +163,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decision:** errors (block use): contract violations, history < 104 weeks, `capacity_plan` not covering every week from history start to 13 weeks past history end. Warnings: rows outside the manifest window, weeks with no orders inside a channel×region's active span, days without marketing rows, `marketing_plan` ending before the 13-week horizon, active accounts without a commitment. A failing dataset still gets `validation_report.{json,md}` and a `datasets` row (with `n_errors`), but no Parquet, so no downstream module can load it. The path guard resolves symlinks and requires a path strictly inside `data/incoming/` or `data/fixtures/` (the roots themselves are refused).
 - **Refs:** ARCH §3, §5.1, §9.5; PRD FR-1, FR-3; T1.1
 
+### D-018 · `cancelled_other` orders are excluded from demand · 2026-09-29 · accepted
+- **Context:** ARCH §5.2 says demand = Σ `requested_qty_kg`; D-005 lists only waitlisted and stockout-cancelled orders as additions to sales. `cancelled_other` is customer-initiated and never needed capacity; counting it would inflate forecasts by the cancellation rate and overstate shortfall risk.
+- **Options:** (A) all statuses (ARCH literal); (B) exclude `cancelled_other`, report it separately.
+- **Decision:** B. `demand_kg` excludes `cancelled_other` (kept as `cancelled_other_kg`). `is_censored` follows ARCH (waitlisted + cancelled_stockout share > 0). Partial fills are reported as `partial_short_kg`/`unmet_kg` but do not set `is_censored`, because the full requested quantity is still observed. Series are zero-filled from their first order week to the last history week; D2C series drop `customer_id`, B2B series are keyed by account × SKU × region.
+- **Consequences:** deviation from ARCH §5.2 wording; consistent with D-005 intent.
+- **Refs:** ARCH §5.2; D-005; T1.2
+
 ---
 
 ## 2. Assumptions register
@@ -278,5 +285,14 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Tests:** 13 added / 41 passing (CLI end-to-end; idempotent hash; guard rejects `../`, `/etc`, `/tmp`, `../dgp`, root dirs, symlink escape; accepts relative + absolute inside; invalid world → report, no Parquet; short history → error)
 - **Decisions made:** D-017
 - **Deviations from ARCH:** none
+- **Known issues / follow-ups:** none
+
+### TL-006 · T1.2 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.demand.reconstruct.weekly_demand`: zero-filled weekly demand vs. sales per series (D2C region×SKU; B2B account×SKU×region) with `censored_kg`, `censored_share`, `is_censored`, `unmet_kg`, `partial_short_kg`, `cancelled_other_kg`; `channel_totals` for bottom-up totals. `ingest.load_history_window` / `load_manifest` helpers. Session-scoped tiny_world ingest fixture in `conftest.py`.
+- **Files touched:** `backend/dce/demand/reconstruct.py`, `backend/dce/ingest/core.py`, `backend/dce/tests/{conftest,test_demand}.py`
+- **Tests:** 8 added / 49 passing (stockout week demand > sales; waitlist censored; normal weeks equal; B2B partial unmet but uncensored; zero-fill grid; conservation; cancelled_other excluded; empty input)
+- **Decisions made:** D-018
+- **Deviations from ARCH:** `cancelled_other` excluded from demand (D-018)
 - **Known issues / follow-ups:** none
 

@@ -49,7 +49,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
   *Accept:* `dce ingest data/fixtures/tiny_world` outputs a report (JSON + readable summary) and Parquet; the path guard rejects `../` and absolute paths outside allowed dirs (test).
   *Depends:* T0.3, T0.4
 
-- [ ] **T1.2 Demand reconstruction**
+- [x] **T1.2 Demand reconstruction**
   *Refs:* ARCH §5.2 · IDEATION §13 (unconstrained demand) · PRD FR-2
   *Accept:* weekly requested vs. fulfilled series; censoring flags; test that the stockout week shows demand > sales.
   *Depends:* T1.1
