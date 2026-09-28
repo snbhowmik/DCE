@@ -54,7 +54,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
   *Accept:* weekly requested vs. fulfilled series; censoring flags; test that the stockout week shows demand > sales.
   *Depends:* T1.1
 
-- [ ] **T1.3 Funnel metrics engine**
+- [x] **T1.3 Funnel metrics engine**
   *Refs:* IDEATION §7.2 · ARCH §5.3 · PRD FR-4
   *Do:* every metric in the IDEATION table, per region × channel × week/month. Cohort LTV. ROI on margin.
   *Accept:* unit tests with hand-computed expected values for each formula; divide-by-zero handled (returns null, not inf).

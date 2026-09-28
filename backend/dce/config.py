@@ -20,3 +20,7 @@ def load_yaml(path: Path) -> dict[str, Any]:
 
 def load_app_config(config_dir: Path | None = None) -> dict[str, Any]:
     return load_yaml((config_dir or paths.CONFIG_DIR) / "app.yaml")
+
+
+def load_scoring_config(config_dir: Path | None = None) -> dict[str, Any]:
+    return load_yaml((config_dir or paths.CONFIG_DIR) / "scoring.yaml")

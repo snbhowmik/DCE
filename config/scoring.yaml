@@ -1,0 +1,8 @@
+# Metric, RES and AQS settings (IDEATION §7.2, §9; ARCH §5.3). Tune only with a TN entry in NOTES.
+metrics:
+  # Expected-lifetime cap for LTV projection when churn is ~0 (months).
+  ltv_max_lifetime_months: 36
+  # Trailing cohort ages used to estimate steady-state margin and churn for projection.
+  ltv_projection_window_months: 3
+  # Cohorts younger than this are excluded from region-level LTV.
+  ltv_min_cohort_age_months: 3

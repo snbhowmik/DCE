@@ -170,6 +170,19 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Consequences:** deviation from ARCH §5.2 wording; consistent with D-005 intent.
 - **Refs:** ARCH §5.2; D-005; T1.2
 
+### D-019 · Funnel metric definitions where IDEATION §7.2 leaves room · 2026-09-29 · accepted
+- **Context:** Several §7.2 formulas need a concrete data mapping.
+- **Decision:**
+  - *New customers* come from the CRM (`customers.acquired_date`; B2B: `b2b_accounts.onboarded_date`), not platform `conversions`. `cac` = spend ÷ all new customers (blended); `cac_paid` = spend ÷ customers with a non-null acquisition campaign. Attributable sales cost is not in the contract → 0.
+  - *Churn* = lost ÷ at-start, where at-start = acquired before the period and not churned before it; customers acquired and churned in the same period count as new but not as lost. Computed by cumulative counts (scales with customers, not customers × periods). B2B churn uses `contract_end` of `churned` accounts.
+  - *Period LTV* (D2C) is the §7.2 formula with the period's AOV, frequency (orders ÷ active customers), margin %, and 1/churn; null when churn = 0. B2B LTV = monthly contract margin × contract tenure (mean over live contracts; null for open-ended contracts). *Cohort LTV* (region × acquisition month; realized + projected with capped lifetime) is the robust estimate used by RES.
+  - *MRR* only at month grain (B2B contract value + D2C subscriber revenue); null at week grain.
+  - *ROI* = (attributed revenue × realized margin % − spend) ÷ spend; platform attribution is biased (A-008), so ROI is a scorecard only.
+  - *Unique visitors* are period sums of daily uniques (the contract has no visitor ids).
+  - *Organic share* = share of new customers with no acquisition campaign (proxy for word of mouth until T4).
+  - Every ratio returns null (never inf/NaN) on zero or null denominators.
+- **Refs:** IDEATION §7.2; ARCH §5.3; PRD FR-4; T1.3
+
 ---
 
 ## 2. Assumptions register
@@ -295,4 +308,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-018
 - **Deviations from ARCH:** `cancelled_other` excluded from demand (D-018)
 - **Known issues / follow-ups:** none
+
+### TL-007 · T1.3 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.metrics.funnel.funnel_metrics(tables, first, last, grain)` returns every §7.2 metric per region × channel × week|month on a complete grid (spend, visitors, bounce rate, CTR, CPC, CPL, qualified rate, visitor→lead, lead→customer, new/paid/organic customers, CAC, churn, AOV, frequency, margin %, LTV, LTV:CAC, MRR, NPS, ROI on margin). `dce.metrics.cohorts`: cohort table, cohort LTV (realized + projected), region LTV. `config/scoring.yaml` created (metrics section).
+- **Files touched:** `backend/dce/metrics/{funnel,cohorts}.py`, `backend/dce/config.py`, `config/scoring.yaml`, `backend/dce/tests/test_metrics_funnel.py`
+- **Tests:** 12 added / 61 passing (hand-computed values for every formula; zero denominators → null; no inf/NaN anywhere; weekly grain; cohort LTV realized/projected/capped; config load; tiny_world smoke)
+- **Decisions made:** D-019
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** D2C period LTV is noisy at week grain by construction; RES should use cohort LTV.
 
