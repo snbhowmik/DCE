@@ -36,7 +36,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
   *Accept:* passes T0.2 validation.
   *Depends:* T0.2
 
-- [ ] **T0.4 Run + store infrastructure**
+- [x] **T0.4 Run + store infrastructure**
   *Refs:* ARCH §5.12, §8
   *Do:* SQLite models; `run_id` generation; dataset/config hashing; git SHA capture; structlog setup; seed derivation utility.
   *Accept:* a dummy run writes a row with all hashes; the same inputs give the same hashes.

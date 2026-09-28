@@ -153,6 +153,11 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decision:** read all columns as strings; cast per contract; any non-empty cell that fails to cast is a `type` error with CSV line numbers. Pandera (polars backend) then checks nulls, enums, ranges, and PK uniqueness. FKs, row rules, and Monday checks run afterwards. Severity: `error` blocks ingest; `warning` is reported only.
 - **Refs:** ARCH §5.1; T0.2, T1.1
 
+### D-016 · Provenance formats · 2026-09-29 · accepted
+- **Context:** ARCH §5.12 names the fields but not their formats.
+- **Decision:** `run_id = run_<UTC yyyymmddThhmmss>_<8 hex>` (sortable; unique per execution; never an input to any computation). `dataset_hash` = SHA-256 over sorted `filename:sha256` lines of contract files only (13 CSVs + manifest), so READMEs/markers don't change it and file swaps do. `config_hash` = SHA-256 of canonical JSON (sorted keys). `git_sha` gets a `-dirty` suffix when tracked files differ from HEAD; `unknown` outside git. Sub-seeds = first 63 bits of SHA-256(`seed|module|series…`). `runs` also stores the full effective config (JSON) plus `kind` and `parent_run_id` (for scenarios/onboarding re-solves).
+- **Refs:** ARCH §5.12, §8; T0.4
+
 ---
 
 ## 2. Assumptions register
@@ -251,4 +256,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** none
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** T11 evaluator should refuse any world folder containing `NOT_FOR_EVALUATION`.
+
+### TL-004 · T0.4 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** SQLModel tables (datasets, runs, run_artifacts, recommendations, decisions, outcomes, scenarios) with FK enforcement; run lifecycle (`start_run`/`finish_run`/`add_artifact`); dataset + config hashing; git SHA capture; structlog JSON logging with contextvar binding; seed derivation.
+- **Files touched:** `backend/dce/{hashing,seeds,config,logs,gitinfo}.py`, `backend/dce/store/{models,db,runs}.py`, `backend/dce/tests/test_store.py`
+- **Tests:** 7 added / 28 passing
+- **Decisions made:** D-016
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** no migrations (schema created with `create_all`); revisit if the schema changes after data exists.
 
