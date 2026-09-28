@@ -131,6 +131,19 @@ def _customer_flows(customers: pl.DataFrame, grid: pl.DataFrame, grain: Grain) -
             how="left",
         )
         .fill_null(0)
+        .cast(
+            {
+                c: pl.Int64
+                for c in (
+                    "acq_before",
+                    "churn_before",
+                    "new_customers",
+                    "new_customers_paid",
+                    "churned",
+                    "churned_same_period",
+                )
+            }
+        )
         .with_columns(
             (pl.col("acq_before") - pl.col("churn_before")).alias("customers_at_start"),
             (pl.col("churned") - pl.col("churned_same_period")).alias("customers_lost"),
@@ -254,7 +267,8 @@ def funnel_metrics(
         "new_customers_paid", "customers_at_start", "customers_lost", "active_customers",
         "nps_responses", "promoters", "detractors",
     ]  # fmt: skip
-    df = df.with_columns(pl.col(count_cols).fill_null(0))
+    # Counts are Int64: polars sums of booleans are unsigned, and differences would wrap.
+    df = df.with_columns(pl.col(count_cols).fill_null(0).cast(pl.Int64))
 
     margin_pct = safe_div(pl.col("gross_margin_inr"), pl.col("revenue_inr"))
     churn = safe_div(pl.col("customers_lost"), pl.col("customers_at_start"))

@@ -102,7 +102,10 @@ def cohort_table(tables: dict[str, pl.DataFrame], last_complete_month: date) -> 
         ages.drop("acq_idx")
         .join(survival, on=["region_id", "cohort_month", "age"], how="left")
         .join(margin, on=["region_id", "cohort_month", "age"], how="left")
-        .with_columns(pl.col("margin_inr").fill_null(0.0), pl.col("age").cast(pl.Int64))
+        .with_columns(
+            pl.col("margin_inr").fill_null(0.0),
+            pl.col("age", "n", "alive", "lost").cast(pl.Int64),
+        )
         .sort("region_id", "cohort_month", "age")
     )
 

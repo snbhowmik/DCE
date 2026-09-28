@@ -240,3 +240,13 @@ def test_ltv_config_from_scoring_yaml() -> None:
 
     cfg = LtvConfig.from_scoring(load_scoring_config())
     assert cfg.max_lifetime_months == 36 and cfg.window_months == 3
+
+
+def test_negative_nps_does_not_wrap(world: dict[str, pl.DataFrame]) -> None:
+    """Regression: promoters − detractors on unsigned counts wrapped to ~4e9."""
+    w = dict(world)
+    w["nps_responses"] = world["nps_responses"].with_columns(pl.lit(2).alias("score"))
+    jan = _get(
+        funnel_metrics(w, D("2025-01-01"), D("2025-02-28"), "month"), "R", "D2C", "2025-01-01"
+    )
+    assert jan["nps"] == pytest.approx(-100.0)

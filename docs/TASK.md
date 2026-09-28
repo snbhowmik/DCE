@@ -60,7 +60,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
   *Accept:* unit tests with hand-computed expected values for each formula; divide-by-zero handled (returns null, not inf).
   *Depends:* T1.1
 
-- [ ] **T1.4 Evidence scores (RES, AQS)**
+- [x] **T1.4 Evidence scores (RES, AQS)**
   *Refs:* IDEATION §9 · ARCH §5.3 · `config/scoring.yaml`
   *Accept:* scores + component breakdown + confidence; shrinkage test (low-n region is pulled toward the mean); pipeline accounts flagged `prior=true`.
   *Depends:* T1.3

@@ -6,3 +6,26 @@ metrics:
   ltv_projection_window_months: 3
   # Cohorts younger than this are excluded from region-level LTV.
   ltv_min_cohort_age_months: 3
+
+# Response Evidence Score per region × channel (IDEATION §9.1, ARCH §5.3).
+res:
+  window_weeks: 52            # trailing window for econ / retention / NPS components
+  weights: {lift: 0.35, econ: 0.30, retention: 0.20, nps: 0.15}
+  # Shrinkage toward the channel mean: n_eff/(n_eff+k). n_eff = new customers (D2C), active accounts (B2B).
+  shrinkage_k: {D2C: 100, B2B: 3}
+  step_up:
+    min_increase: 0.20        # week-over-week spend increase that counts as a step-up
+    sustain_weeks: 2          # spend must stay ≥ (1+min_increase)×pre-level this many weeks
+    pre_weeks: 4
+    early_weeks: [1, 4]
+    late_weeks: [5, 10]
+    ratio_clip: [0.0, 1.5]
+
+# Account Quality Score per B2B account / candidate (IDEATION §9.2).
+aqs:
+  concentration_cap: 0.30     # share of monthly capacity; flagged above this
+  shrinkage_k_months: 6       # confidence = months/(months+k); pipeline accounts = 0
+  profiles:                   # selected by strategy mode (onboarding_aqs_weights)
+    balanced:          {volume: 0.20, stability: 0.20, reach: 0.15, margin: 0.20, reliability: 0.15, penalty: 0.10, concentration: 0.50}
+    reach_heavy:       {volume: 0.25, stability: 0.10, reach: 0.35, margin: 0.15, reliability: 0.10, penalty: 0.05, concentration: 0.30}
+    reliability_heavy: {volume: 0.10, stability: 0.35, reach: 0.05, margin: 0.15, reliability: 0.30, penalty: 0.15, concentration: 0.80}

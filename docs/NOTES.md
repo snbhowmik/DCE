@@ -183,6 +183,18 @@ Every task completion, design decision, assumption, contract change, integrity e
   - Every ratio returns null (never inf/NaN) on zero or null denominators.
 - **Refs:** IDEATION §7.2; ARCH §5.3; PRD FR-4; T1.3
 
+### D-020 · RES and AQS operational definitions · 2026-09-29 · accepted
+- **Context:** ARCH §5.3 gives the RES/AQS structure; several quantities need concrete definitions.
+- **Decision (RES, per region × channel):**
+  - *Sustained lift:* a step-up at week t is weekly spend ≥ (1 + 20%) × mean of the 4 prior weeks for ≥ 2 consecutive weeks (pre-period mean rather than the single prior week, so ±10% day-to-day noise doesn't trigger). Early lift = mean demand in weeks t+1…t+4 − pre mean; late = t+5…t+10 − pre mean; ratio = late ÷ early, clipped to [0, 1.5]; events with early ≤ 0 are uninformative (no ratio). Events don't overlap. Component = mean ratio.
+  - *Econ:* window LTV ÷ window CAC; D2C LTV = cohort region LTV, B2B = contract LTV.
+  - *Retention:* mean of (1 − window monthly churn) and repeat-purchase rate (D2C customers with ≥ 2 served orders in the window).
+  - *NPS* over the trailing window (52 weeks, config).
+  - z-scores within channel across regions; a missing component gets z = 0 and is listed in `missing_components`. Shrinkage: `conf = n_eff/(n_eff + k)`, `n_eff` = window new customers (D2C) or active accounts (B2B), `k` per channel in config; `RES = conf·RES_raw + (1−conf)·mean_channel(RES_raw)`. `confidence` is reported.
+- **Decision (AQS, per account):** volume = commitment (pipeline: requested volume); stability = 1 − CV of monthly ordered/committed; reach = ln(1 + outlets) × regions served; margin = contract price − production unit cost; reliability = share of contract-active weeks with an order; penalty exposure = penalty/kg × commitment (subtracted); concentration = volume ÷ planned monthly in-house capacity (last 13 weeks), penalized as `w·share/cap` and flagged above `concentration_cap`. z against accounts with contract history. Pipeline accounts: stability/reliability/margin/penalty from account-type means (global mean if the type is absent), `prior=true`, `confidence=0`. Weight profiles (`balanced`, `reach_heavy`, `reliability_heavy`) are passed in by name; the metrics module never reads strategy modes (P1).
+- **Consequences:** fill-history (our fill rate to the account) is not in AQS: it measures us, not the account. Payment reliability isn't in the contract.
+- **Refs:** IDEATION §9; ARCH §5.3; PRD FR-5; T1.4
+
 ---
 
 ## 2. Assumptions register
@@ -317,4 +329,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-019
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** D2C period LTV is noisy at week grain by construction; RES should use cohort LTV.
+
+### TL-008 · T1.4 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** RES (`dce.metrics.res`): step-up detection, sustained-lift ratio, econ/retention/NPS components, within-channel z-scores, empirical-Bayes shrinkage with confidence, component breakdown + missing list. AQS (`dce.metrics.aqs`): volume/stability/reach/margin/reliability/penalty/concentration with profiles, type priors for pipeline accounts (`prior=true`). `dce.metrics.scores.evidence_scores` orchestrates from a loaded dataset. Fixed an unsigned-integer wrap in funnel counts (NPS with more detractors than promoters wrapped to ~7e10); all funnel counts are now Int64.
+- **Files touched:** `backend/dce/metrics/{res,aqs,scores,funnel,cohorts}.py`, `config/scoring.yaml`, `backend/dce/tests/{test_scores,test_metrics_funnel}.py`
+- **Tests:** 14 added / 75 passing (sustained ≈1, spike ≈0, noise/blip ignored, no-response uninformative; low-n region shrunk toward mean while high-n barely moves; breakdown columns; pipeline prior flag + confidence 0; concentration flag lowers AQS; profiles change AQS not components; config load; last complete month; negative-NPS regression)
+- **Decisions made:** D-020
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** RES lift ignores seasonality around step-ups (confounding caveat, IDEATION §7.2); revisit with the T4 response model.
 
