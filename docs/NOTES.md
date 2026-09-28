@@ -254,6 +254,10 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decision:** earliest activation = max(decision week, Monday of `available_from`); first output = activation + `lead_time_weeks`. A weekly volume is 0 or clipped to [min_commit, max]. Reliability = delivered/requested per activity week (weeks with 0 requested ignored; over-delivery capped at 1 so plans never count on it), sampled i.i.d. per path × week (weekly delivery slips look idiosyncratic, unlike batch failure rates). No activity → Beta(9, 1) prior (mean 0.9, config `capacity.coman_reliability_prior`), flagged `reliability_from_prior`.
 - **Refs:** ARCH §5.5, §5.7 constraint 8; PRD FR-12; T3.2
 
+### D-031 · Capacity forecast scope and perishability · 2026-09-29 · accepted
+- **Decision:** the capacity forecast covers the single production product line (A-001); more than one raises `NotImplementedError` pointing at A-001 rather than silently picking one. Shelf life = min over that line's production SKUs; carryover = 0 if < 7 days, else min(⌊shelf/7⌋, `capacity.carryover_cap_weeks` = 1 per A-003). Waste cost = `capacity.waste_cost_inr_per_kg`, defaulting to the unit production cost (value lost on expiry). `at_quantile(q)` is the optimizer's `Cap_in` accessor. `runner.capacity_stage` receives the full RunConfig but uses only app + seed; capacity hashes are asserted equal across modes too (P1 covers CAP).
+- **Refs:** ARCH §1, §5.5; PRD FR-13; A-001, A-003; T3.3
+
 ---
 
 ## 2. Assumptions register
@@ -492,4 +496,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-030
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** min-active-weeks linking is an optimizer constraint (T5.4).
+
+### TL-019 · T3.3 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.capacity.model`: `carryover_weeks`, `Perishability`, `CapacityForecast` (in-house paths + quantiles incl. planned kg and mean, co-man partners for the line, `at_quantile`, artifact hash, writer), `capacity_forecast`; `runner.capacity_stage`.
+- **Files touched:** `backend/dce/capacity/model.py`, `backend/dce/runner.py`, `backend/dce/tests/test_capacity_model.py`
+- **Tests:** 11 added / 159 passing (carryover rule table; failure-heavy history widens P10–P90 > 1.5× and lowers P50; quantile ordering + accessor; perishability from fixture; deterministic hash; capacity hash identical across modes; artifact writing)
+- **Decisions made:** D-031
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** none
 

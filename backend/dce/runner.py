@@ -12,6 +12,7 @@ from typing import Any
 
 import polars as pl
 
+from dce.capacity.model import CapacityForecast, capacity_forecast
 from dce.config import load_app_config, load_scoring_config
 from dce.forecast.run import DatasetForecast, forecast_dataset
 from dce.strategy import load_strategy_modes
@@ -53,3 +54,9 @@ def forecast_stage(
     tables: dict[str, pl.DataFrame], window: tuple[date, date], run: RunConfig
 ) -> DatasetForecast:
     return forecast_dataset(tables, window, run.app, run.scoring, run.seed)
+
+
+def capacity_stage(
+    tables: dict[str, pl.DataFrame], window: tuple[date, date], run: RunConfig
+) -> CapacityForecast:
+    return capacity_forecast(tables, window, run.app, run.seed)
