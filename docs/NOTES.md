@@ -200,6 +200,12 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decision:** a fold's `origin` is its first forecast week; models receive only rows with `week_start < origin` (plus a separate known-future covariate frame). The newest fold's horizon ends at the last history week; older folds step back 4 weeks; folds leaving < 52 training weeks are dropped (config). Models implement `fit_predict(history, horizon, future) → series_id, week_start, q10, q50, q90`; the harness rejects wrong shapes. MASE uses P50 with a per-fold scale from that fold's training data (m = 52, falling back to m = 1 if the series is too short or the seasonal scale is 0; null if both are 0). Pinball is the mean over q ∈ {0.1, 0.5, 0.9}, also reported scaled by the MASE scale. Coverage = share of actuals in [q10, q90].
 - **Refs:** ARCH §5.4; PRD FR-7; T2.1
 
+### D-022 · Baseline quantiles · 2026-09-29 · accepted
+- **Context:** "quantiles from empirical residuals" could shift P50 by the median residual, which would no longer be the textbook seasonal-naive baseline that MASE and FR-8 fall back to.
+- **Decision:** P50 = the rule's point forecast. P10/P90 = point + 10th/90th percentile of the rule's residuals on training history (SeasonalNaive: seasonal differences; WindowAverage and the naive fallback: h-step residuals per horizon step, pooled if < 8 residuals). Crossing guard keeps P50 anchored (P10 = min(P10, P50), P90 = max(P90, P50)); all quantiles clipped at 0. SeasonalNaive(52) falls back to last-value when history < 53 weeks.
+- **Consequences:** biased rules (e.g. naive on a trend) get one-sided bands; calibration (T2.6) corrects coverage.
+- **Refs:** ARCH §5.4; T2.2
+
 ---
 
 ## 2. Assumptions register
@@ -350,6 +356,15 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Files touched:** `backend/dce/forecast/backtest.py`, `config/app.yaml`, `backend/dce/tests/test_backtest.py`
 - **Tests:** 7 added / 82 passing (fold geometry; short-history fold dropping; no-leakage spy model; shape enforcement; MASE scale incl. fallback and constant series; hand-computed MASE/pinball/coverage)
 - **Decisions made:** D-021
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** none
+
+### TL-010 · T2.2 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.forecast.baselines`: `SeasonalNaive(52)` and `WindowAverage(8)` implementing the `Forecaster` protocol, P50 = rule, P10/P90 from empirical (h-step where relevant) residuals, non-negative and non-crossing.
+- **Files touched:** `backend/dce/forecast/baselines.py`, `backend/dce/tests/test_baselines.py`
+- **Tests:** 7 added / 89 passing (seasonal copy; residual quantiles vs numpy; short-history fallback; window mean; hand-computed h=1 residuals; ordering + non-negativity; backtest smoke on fixture)
+- **Decisions made:** D-022
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** none
 

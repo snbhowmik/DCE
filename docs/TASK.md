@@ -72,7 +72,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
   *Accept:* rolling-origin splitter (no leakage test: every feature timestamp < fold cutoff); MASE, pinball, coverage implemented and unit-tested.
   *Depends:* T1.2
 
-- [ ] **T2.2 Baselines**: SeasonalNaive(52), WindowAverage(8), with quantiles from empirical residuals.
+- [x] **T2.2 Baselines**: SeasonalNaive(52), WindowAverage(8), with quantiles from empirical residuals.
   *Depends:* T2.1
 
 - [ ] **T2.3 Statistical models**: AutoETS, AutoTheta via statsforecast.
