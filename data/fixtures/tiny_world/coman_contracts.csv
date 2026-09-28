@@ -1,0 +1,3 @@
+coman_id,product_line,available_from,lead_time_weeks,min_commit_kg_per_week,max_kg_per_week,unit_cost_inr_per_kg,min_active_weeks
+CM_A,cultivated_chicken,2024-06-03,4,50,200,1200,4
+CM_B,cultivated_chicken,2026-03-09,6,100,300,1150,8

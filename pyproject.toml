@@ -7,3 +7,7 @@ biokraft-dce = { workspace = true }
 
 [dependency-groups]
 dev = ["biokraft-dce"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

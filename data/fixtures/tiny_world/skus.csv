@@ -1,0 +1,2 @@
+sku_id,product_line,pack_size_kg,status,expected_launch_date,shelf_life_days,unit_cost_inr_per_kg,list_price_d2c_inr_per_kg
+SKU_CC_500,cultivated_chicken,0.5,production,,10,900,1600

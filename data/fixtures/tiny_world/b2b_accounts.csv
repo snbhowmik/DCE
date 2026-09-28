@@ -1,0 +1,4 @@
+account_id,account_type,region_id,regions_served,outlets_count,status,onboarded_date,contract_start,contract_end,committed_kg_per_month,contract_price_inr_per_kg,shortfall_penalty_inr_per_kg,requested_start_date,requested_kg_per_month
+ACC_DIST,distributor,R_N,R_N|R_S,40,active,2023-12-01,2024-01-01,2026-12-31,400,1250,200,,
+ACC_REST,restaurant,R_S,R_S,1,active,2024-03-01,2024-03-04,2026-06-30,80,1400,100,,
+ACC_QSR,qsr_chain,R_N,R_N|R_S,25,pipeline,,,,,,,2026-03-23,300

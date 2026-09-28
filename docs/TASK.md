@@ -31,7 +31,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
   *Accept:* schemas validate a correct fixture and reject each of: wrong type, missing column, bad enum, FK violation.
   *Depends:* T0.1
 
-- [ ] **T0.3 Unit-test fixtures**
+- [x] **T0.3 Unit-test fixtures**
   *Do:* `data/fixtures/tiny_world/`: 2 regions, 1 SKU, 3 accounts, 2 co-man partners, 110 weeks; hand-written or simple deterministic script, **clearly labeled not for evaluation**. Include one stockout week, one waitlist, and one failed batch so code paths are exercised.
   *Accept:* passes T0.2 validation.
   *Depends:* T0.2

@@ -1,0 +1,5 @@
+sku_id,channel,region_id,eligible_from,eligible_to
+SKU_CC_500,D2C,R_N,2024-01-01,
+SKU_CC_500,D2C,R_S,2024-01-01,
+SKU_CC_500,B2B,R_N,2024-01-01,
+SKU_CC_500,B2B,R_S,2024-01-01,
