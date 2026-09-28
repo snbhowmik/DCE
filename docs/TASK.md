@@ -118,7 +118,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
   *Accept:* recovers parameters on a fixture generated with **known test-only parameters inside the test file** (this is a unit test of the fitter, not evaluation); bootstrap CIs; `low_confidence` flag logic.
   *Depends:* T1.3
 
-- [ ] **T4.2 Piecewise linearization + extrapolation guard**
+- [x] **T4.2 Piecewise linearization + extrapolation guard**
   *Accept:* K segments with non-increasing slopes; spend cap = max observed × factor; test concavity.
   *Depends:* T4.1
 

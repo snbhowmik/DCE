@@ -269,6 +269,13 @@ Every task completion, design decision, assumption, contract change, integrity e
   - `steady_lift(s)` evaluates lift at constant weekly spend s (adstock s/(1−θ)); `lag_weights(n)` gives the geometric lag profile for the optimizer.
 - **Refs:** IDEATION §7.2 (causality caution); ARCH §5.6; T4.1
 
+### D-033 · Linearizing S-shaped responses · 2026-09-29 · accepted
+- **Context:** Hill with α > 1 is S-shaped; its PWL would have increasing slopes and break the LP (ARCH §5.6 assumes concavity).
+- **Options:** (A) constrain α ≤ 1 in the fit (biases fits of genuinely S-shaped responses); (B) MILP with SOS2 (slower, against D-006); (C) upper concave envelope.
+- **Decision:** C. The PWL is built on the least concave majorant of the steady-state curve over [0, cap] (identical to the curve when α ≤ 1). Breakpoints sit at equal arc length of the normalized (spend/cap, lift/max) curve; equal-spend spacing missed the steep start of α < 1 curves (12% error) and equal-lift spacing missed the flat top of S-curves (14%). With K = 6: 2–6% max error for concave fits; strong S-curves keep the unavoidable envelope gap (reported per region as `max_abs_error`).
+- **Consequences:** below an S-curve's inflection the LP sees slightly optimistic lift at small spend; it only matters for spend levels an optimizer wouldn't choose on the true curve anyway.
+- **Refs:** ARCH §5.6, §5.7; D-006; T4.2
+
 ---
 
 ## 2. Assumptions register
@@ -525,4 +532,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-032
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** full test suite now ~65 s; consider pytest-xdist.
+
+### TL-021 · T4.2 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.response.pwl`: `concave_majorant`, arc-length breakpoints, `linearize(fit, k)` → `ResponseCurve` (breakpoints, widths, non-increasing slopes, cap, low_confidence, max_abs_error, `evaluate`). `response.pwl_segments: 6` in config.
+- **Files touched:** `backend/dce/response/pwl.py`, `config/app.yaml`, `backend/dce/tests/test_response_pwl.py`
+- **Tests:** 9 added / 176 passing (K segments, non-increasing non-negative slopes, cap = max × 1.5, no lift beyond cap, for α ∈ {0.6, 1, 1.6, 2.8}; PWL is a concave, monotone function; concave fits: chords below the curve with error < 10% of max; S-curve envelope; majorant unit case; zero response)
+- **Decisions made:** D-033
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** none
 

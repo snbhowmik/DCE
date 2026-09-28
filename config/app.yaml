@@ -43,3 +43,4 @@ response:
   max_rel_ci_width: 1.5           # (P95 − P5) / median of lift at mean spend
   min_spend_cv: 0.10              # weekly spend must vary to identify a response
   extrapolation_factor: 1.5       # recommended spend ≤ max observed weekly spend × factor
+  pwl_segments: 6                 # K piecewise-linear segments per region for the optimizer
