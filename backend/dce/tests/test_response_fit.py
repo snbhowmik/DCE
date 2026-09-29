@@ -110,3 +110,24 @@ def test_dataset_driver_and_mode_invariance(tiny_tables, tiny_window) -> None:
     assert len(hashes) == 1
     assert set(rs.fits) | set(rs.skipped) == {"R_N", "R_S"}
     assert rs.summary().height == len(rs.fits)
+
+
+def test_sparse_spend_history_is_low_confidence() -> None:
+    """Spend present only in the first weeks (then zero) cannot identify a response."""
+    y, s = simulate(seed=11)
+    s = s.copy()
+    s[20:] = 0.0
+    f = fit_region("R", y, s, ResponseConfig(n_boot=5), seed=1)
+    assert f.low_confidence and any("weeks with spend" in r for r in f.reasons)
+
+
+def test_bound_guard() -> None:
+    from dce.response.fit import _bound_reasons, _Solve
+
+    _, s = simulate(seed=12)
+    cfg = ResponseConfig()
+    pinned = _Solve(0.9, 0.5, 1e9, 1.0, np.zeros(6), 0.0, np.zeros(N))
+    reasons = _bound_reasons(pinned, s, cfg)
+    assert {r.split()[0] for r in reasons} == {"theta", "alpha", "kappa"}
+    interior = _Solve(0.5, 1.5, float(adstock(s, 0.45).mean()), 1.0, np.zeros(6), 0.0, np.zeros(N))
+    assert _bound_reasons(interior, s, cfg) == []

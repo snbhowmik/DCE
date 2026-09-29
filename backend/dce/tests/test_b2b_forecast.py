@@ -88,16 +88,24 @@ def test_contract_end_respected(
     assert (out.paths_kg[i, :, 5:] == 0).all() and (out.paths_kg[i, :, :5] > 0).any()
 
 
-def test_expired_contract_excluded() -> None:
+def test_contract_end_at_snapshot_is_rolling_for_active_accounts() -> None:
     accts = pl.DataFrame(
         {
-            "account_id": ["X"], "region_id": ["R"], "status": ["active"],
-            "contract_start": [date(2024, 1, 1)], "contract_end": [date(2024, 6, 30)],
-            "committed_kg_per_month": [100.0],
+            "account_id": ["X", "Y"], "region_id": ["R", "R"], "status": ["active", "active"],
+            "contract_start": [date(2024, 1, 1)] * 2,
+            "contract_end": [date(2024, 6, 30), date(2025, 1, 6)],  # past; = first horizon week
+            "committed_kg_per_month": [100.0, 100.0],
         }
     )  # fmt: skip
-    e = account_eligibility(accts, date(2025, 1, 6)).row(0, named=True)
-    assert not e["included"] and "ended" in e["reason"]
+    rolling = {
+        r["account_id"]: r
+        for r in account_eligibility(accts, date(2025, 1, 6)).iter_rows(named=True)
+    }
+    for a in ("X", "Y"):
+        assert rolling[a]["included"] and rolling[a]["end_assumed_rolling"]
+        assert rolling[a]["effective_end"] is None
+    strict = account_eligibility(accts, date(2025, 1, 6), rolling_renewal=False).row(0, named=True)
+    assert not strict["included"] and "ended" in strict["reason"]
 
 
 def test_young_account_gets_baseline_and_spread(

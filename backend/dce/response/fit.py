@@ -33,6 +33,7 @@ class ResponseConfig:
     elasticity_bounds: tuple[float, float] = (0.0, 0.8)
     max_rel_ci_width: float = 1.5
     min_spend_cv: float = 0.10
+    min_spend_weeks: int = 26
     extrapolation_factor: float = 1.5
 
     @classmethod
@@ -55,6 +56,7 @@ class ResponseConfig:
             elasticity_bounds=pair("elasticity_bounds"),
             max_rel_ci_width=float(r.get("max_rel_ci_width", d.max_rel_ci_width)),
             min_spend_cv=float(r.get("min_spend_cv", d.min_spend_cv)),
+            min_spend_weeks=int(r.get("min_spend_weeks", d.min_spend_weeks)),
             extrapolation_factor=float(r.get("extrapolation_factor", d.extrapolation_factor)),
         )
 
@@ -187,6 +189,25 @@ def _block_resample(resid: np.ndarray, block: int, gen: np.random.Generator) -> 
     return out
 
 
+def _bound_reasons(best: _Solve, spend: np.ndarray, cfg: ResponseConfig) -> list[str]:
+    """An estimate sitting on its search bound is not identified by the data."""
+    a_ref = max(float(adstock(spend, float(np.mean(cfg.theta_bounds))).mean()), 1e-9)
+    checks = {
+        "theta": (best.theta, cfg.theta_bounds),
+        "alpha": (best.alpha, cfg.alpha_bounds),
+        "kappa": (
+            np.log(best.kappa),
+            (np.log(cfg.kappa_rel_bounds[0] * a_ref), np.log(cfg.kappa_rel_bounds[1] * a_ref)),
+        ),
+    }
+    out = []
+    for name, (v, (lo, hi)) in checks.items():
+        tol = 0.01 * (hi - lo)
+        if v <= lo + tol or v >= hi - tol:
+            out.append(f"{name} at search bound (not identified)")
+    return out
+
+
 def fit_region(
     region_id: str,
     demand: np.ndarray,
@@ -234,6 +255,10 @@ def fit_region(
     }
 
     reasons = []
+    spend_weeks = int((s > 0).sum())
+    if spend_weeks < cfg.min_spend_weeks:
+        reasons.append(f"only {spend_weeks} weeks with spend (< {cfg.min_spend_weeks})")
+    reasons += _bound_reasons(best, s, cfg)
     cv = float(s.std() / s.mean()) if s.mean() > 0 else 0.0
     if cv < cfg.min_spend_cv:
         reasons.append(f"spend barely varies (CV {cv:.2f} < {cfg.min_spend_cv})")

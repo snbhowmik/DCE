@@ -117,8 +117,8 @@ MINI_WORLD: dict[str, list[dict[str, str]]] = {
 MANIFEST = {
     "world_id": "world_test",
     "contract_version": CONTRACT_VERSION,
-    "start_date": "2024-01-01",
-    "end_date": "2024-01-14",
+    "history_start": "2024-01-01",
+    "history_end": "2024-01-14",
     "generated_at": "2026-09-29T00:00:00Z",
 }
 

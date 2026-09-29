@@ -1,7 +1,8 @@
 {
   "world_id": "tiny_world",
   "contract_version": "1.0.0",
-  "start_date": "2024-01-01",
-  "end_date": "2026-02-08",
+  "history_start": "2024-01-01",
+  "history_end": "2026-02-08",
+  "plan_end": "2026-05-10",
   "generated_at": "2026-09-29T00:00:00Z"
 }

@@ -116,10 +116,35 @@ def test_short_history_is_an_error(sandbox: Path, monkeypatch: pytest.MonkeyPatc
     world = incoming / "world_short"
     shutil.copytree(TINY, world)
     manifest = json.loads((world / "manifest.json").read_text())
-    manifest["start_date"] = "2025-06-02"
+    manifest["history_start"] = "2025-06-02"
     (world / "manifest.json").write_text(json.dumps(manifest))
     monkeypatch.setattr(paths, "INCOMING_DIR", incoming)
     report = ingest(world)
     rules = {i.rule for i in report.issues if i.severity == "error"}
     assert "min_history" in rules
     assert any(i.rule == "out_of_range" for i in report.issues)
+
+
+def test_spend_plan_divergence_warning() -> None:
+    from datetime import date, timedelta
+
+    import polars as pl
+
+    from dce.ingest.checks import spend_plan_divergence
+
+    first = date(2024, 1, 1)
+    weeks = [first + timedelta(weeks=i) for i in range(20)]
+    plan = pl.DataFrame({"week_start": weeks, "region_id": ["R"] * 20, "channel": ["D2C"] * 20,
+                         "campaign_type": ["ppc"] * 20, "planned_spend_inr": [100.0] * 20})  # fmt: skip
+    days = [first + timedelta(days=d) for d in range(140)]
+    spend = [50.0 if d < 28 else 0.0 for d in range(140)]  # spend stops after 4 weeks
+    mkt = pl.DataFrame({"date": days, "channel": ["D2C"] * 140, "spend_inr": spend})
+    issues = spend_plan_divergence(
+        {"marketing_daily": mkt, "marketing_plan": plan}, first, weeks[-1]
+    )
+    assert len(issues) == 1 and issues[0].n_rows == 16 and issues[0].severity == "warning"
+    ok = mkt.with_columns(pl.lit(50.0).alias("spend_inr"))
+    assert (
+        spend_plan_divergence({"marketing_daily": ok, "marketing_plan": plan}, first, weeks[-1])
+        == []
+    )

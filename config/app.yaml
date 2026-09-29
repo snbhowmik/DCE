@@ -24,6 +24,9 @@ forecast:
     step_weeks: 4
     min_train_weeks: 52
   mase_seasonality: 52
+  # D-038: active contracts whose end date sits at the snapshot boundary keep ordering; treat
+  # them as rolling renewals. A contract_end later in the horizon is always honored.
+  b2b_rolling_renewal: true
 capacity:
   failure_prior: [1.0, 1.0]     # Beta(a, b) prior on per-batch failure probability
   history_weeks: 104            # batches used for yield/failure estimates (most recent)
@@ -42,6 +45,7 @@ response:
   elasticity_bounds: [0.0, 0.8]   # plausible demand elasticity to spend at mean spend
   max_rel_ci_width: 1.5           # (P95 − P5) / median of lift at mean spend
   min_spend_cv: 0.10              # weekly spend must vary to identify a response
+  min_spend_weeks: 26             # weeks with non-zero spend needed to identify a response
   extrapolation_factor: 1.5       # recommended spend ≤ max observed weekly spend × factor
   pwl_segments: 6                 # K piecewise-linear segments per region for the optimizer
 optimize:

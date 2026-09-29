@@ -3,7 +3,8 @@
 For each active account with a commitment:
   ratio_t   = weekly ordered kg ÷ weekly commitment (commitment/month × 12/52)
   forecast  = the standard pipeline on ratio series (selection, calibration, paths)
-  kg        = ratio × weekly commitment, 0 for weeks starting after `contract_end`
+  kg        = ratio × weekly commitment, 0 for weeks starting after the effective contract end
+              (active contracts ending at the snapshot boundary are treated as rolling; D-038)
 
 Churned, paused and pipeline accounts are not forecast (pipeline accounts enter only via the
 onboarding simulator or scenarios). Contracts are not assumed to renew (A-010).
@@ -28,8 +29,22 @@ def b2b_series_id(account_id: str) -> str:
     return f"B2B|{account_id}"
 
 
-def account_eligibility(accounts: pl.DataFrame, first_horizon_week: date) -> pl.DataFrame:
-    """`account_id, included, reason, weekly_commit_kg, …` for every account."""
+def account_eligibility(
+    accounts: pl.DataFrame, first_horizon_week: date, rolling_renewal: bool = True
+) -> pl.DataFrame:
+    """`account_id, included, reason, weekly_commit_kg, effective_end, …` for every account.
+
+    With `rolling_renewal`, an *active* account whose `contract_end` falls on or before the
+    first horizon week is treated as renewing (open-ended): the data shows such accounts keep
+    ordering at the same rate past that date (D-038). A `contract_end` later in the horizon is
+    a real end date and is honored.
+    """
+    rolling = (
+        pl.lit(rolling_renewal)
+        & (pl.col("status") == "active")
+        & pl.col("contract_end").is_not_null()
+        & (pl.col("contract_end") <= first_horizon_week + timedelta(days=6))
+    )
     reason = (
         pl.when(pl.col("status") == "pipeline")
         .then(pl.lit("pipeline: onboarding simulator only"))
@@ -53,7 +68,9 @@ def account_eligibility(accounts: pl.DataFrame, first_horizon_week: date) -> pl.
         "contract_end",
         "committed_kg_per_month",
         (pl.col("committed_kg_per_month") / WEEKS_PER_MONTH).alias("weekly_commit_kg"),
-        reason.alias("reason"),
+        pl.when(rolling).then(None).otherwise(pl.col("contract_end")).alias("effective_end"),
+        rolling.alias("end_assumed_rolling"),
+        pl.when(rolling).then(None).otherwise(reason).alias("reason"),
     ).with_columns(pl.col("reason").is_null().alias("included"))
 
 
@@ -136,7 +153,7 @@ def forecast_b2b(
 ) -> B2BForecast:
     first, last = window
     horizon = [last + timedelta(weeks=h) for h in range(1, cfg.horizon + 1)]
-    elig = account_eligibility(tables["b2b_accounts"], horizon[0])
+    elig = account_eligibility(tables["b2b_accounts"], horizon[0], cfg.b2b_rolling_renewal)
     ratios = ratio_series(demand, elig, first, last)
     dist = ratio_distribution(ratios)
     if ratios.is_empty():
@@ -168,9 +185,9 @@ def forecast_b2b(
         pl.col("account_id").map_elements(b2b_series_id, return_dtype=pl.String).alias("series_id"),
         "account_id",
         "weekly_commit_kg",
-        "contract_end",
+        "effective_end",
     )
-    live = pl.col("contract_end").is_null() | (pl.col("week_start") <= pl.col("contract_end"))
+    live = pl.col("effective_end").is_null() | (pl.col("week_start") <= pl.col("effective_end"))
     kg = (
         fs.quantiles.join(commit, on="series_id")
         .with_columns(
@@ -185,7 +202,7 @@ def forecast_b2b(
     c = {r["series_id"]: r for r in commit.iter_rows(named=True)}
     mult = np.zeros((len(fs.path_series), len(horizon)))
     for i, sid in enumerate(fs.path_series):
-        end = c[sid]["contract_end"]
+        end = c[sid]["effective_end"]
         for h, wk in enumerate(horizon):
             mult[i, h] = c[sid]["weekly_commit_kg"] if end is None or wk <= end else 0.0
     return B2BForecast(

@@ -422,8 +422,9 @@ def main() -> None:
             {
                 "world_id": "tiny_world",
                 "contract_version": "1.0.0",
-                "start_date": iso(START),
-                "end_date": iso(week(N_WEEKS) - timedelta(days=1)),
+                "history_start": iso(START),
+                "history_end": iso(week(N_WEEKS) - timedelta(days=1)),
+                "plan_end": iso(week(PLAN_WEEKS) - timedelta(days=1)),
                 "generated_at": "2026-09-29T00:00:00Z",
             },
             indent=2,

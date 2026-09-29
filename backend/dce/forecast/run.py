@@ -19,6 +19,8 @@ from dce.forecast.b2b import B2BForecast, forecast_b2b
 from dce.forecast.covariates import build_covariates, series_meta
 from dce.forecast.paths import paths_frame
 from dce.forecast.pipeline import ForecastConfig, ForecastSet, run_forecast
+from dce.numerics import SUM_DECIMALS
+from dce.scope import planning_skus
 
 
 @dataclass
@@ -27,6 +29,7 @@ class DatasetForecast:
     d2c: ForecastSet
     b2b: B2BForecast
     series: pl.DataFrame  # series_id, channel, region_id, account_id, sku_id
+    out_of_scope: pl.DataFrame  # demand for SKUs outside the planned line (A-001), by SKU
 
     def quantiles(self) -> pl.DataFrame:
         """Demand quantiles in kg for every forecast series."""
@@ -80,7 +83,18 @@ def forecast_dataset(
     first, last = window
     cfg = ForecastConfig.from_config(app_cfg, scoring_cfg)
     horizon = [last + timedelta(weeks=h) for h in range(1, cfg.horizon + 1)]
-    demand = weekly_demand(tables["orders"], last)
+    all_demand = weekly_demand(tables["orders"], last)
+    in_scope = pl.col("sku_id").is_in(planning_skus(tables["skus"]))
+    demand = all_demand.filter(in_scope)
+    out_of_scope = (
+        all_demand.filter(~in_scope)
+        .group_by("channel", "sku_id")
+        .agg(
+            pl.col("demand_kg").sum().round(SUM_DECIMALS),
+            pl.col("week_start").min().alias("first_week"),
+        )
+        .sort("channel", "sku_id")
+    )
 
     d2c_demand = demand.filter(pl.col("channel") == "D2C")
     meta = series_meta(d2c_demand)
@@ -100,4 +114,6 @@ def forecast_dataset(
         pl.lit(None, dtype=pl.String).alias("sku_id"),
     )
     series_all = pl.concat([meta.select(b2b_meta.columns), b2b_meta], how="vertical_relaxed")
-    return DatasetForecast(horizon=horizon, d2c=d2c, b2b=b2b, series=series_all)
+    return DatasetForecast(
+        horizon=horizon, d2c=d2c, b2b=b2b, series=series_all, out_of_scope=out_of_scope
+    )

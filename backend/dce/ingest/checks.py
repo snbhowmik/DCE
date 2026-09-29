@@ -9,6 +9,7 @@ import polars as pl
 
 from dce.contract.spec import MIN_HISTORY_WEEKS
 from dce.contract.validate import Issue
+from dce.numerics import SUM_DECIMALS
 
 FORWARD_WEEKS = 13
 _SAMPLE = 5
@@ -31,8 +32,8 @@ def history_window(
 ) -> tuple[date, date] | None:
     """(first Monday, last Monday) of history: from the manifest, else from orders."""
     try:
-        start = date.fromisoformat((manifest or {})["start_date"])
-        end = date.fromisoformat((manifest or {})["end_date"])
+        start = date.fromisoformat((manifest or {})["history_start"])
+        end = date.fromisoformat((manifest or {})["history_end"])
     except (KeyError, TypeError, ValueError):
         orders = tables.get("orders")
         if orders is None or orders.is_empty():
@@ -162,6 +163,8 @@ def continuity_issues(
                 )
             )
 
+    issues += spend_plan_divergence(tables, first, last)
+
     accts = tables.get("b2b_accounts")
     if accts is not None:
         bad = accts.filter(
@@ -202,3 +205,47 @@ def table_summary(tables: dict[str, pl.DataFrame]) -> dict[str, dict[str, Any]]:
             entry["date_max"] = str(df[col].max())
         out[name] = entry
     return out
+
+
+def spend_plan_divergence(
+    tables: dict[str, pl.DataFrame], first: date, last: date, share: float = 0.10
+) -> list[Issue]:
+    """Warn when planned D2C spend is positive but realized spend is zero in many history weeks.
+
+    Realized spend drives the response model and funnel metrics; planned spend is a forecast
+    covariate. If they diverge wholesale, both are suspect.
+    """
+    mkt, plan = tables.get("marketing_daily"), tables.get("marketing_plan")
+    if mkt is None or plan is None:
+        return []
+    realized = (
+        mkt.filter(pl.col("channel") == "D2C")
+        .with_columns(pl.col("date").dt.truncate("1w").alias("week_start"))
+        .group_by("week_start")
+        .agg(pl.col("spend_inr").sum().round(SUM_DECIMALS).alias("realized"))
+    )
+    planned = (
+        plan.filter((pl.col("channel") == "D2C") & pl.col("week_start").is_between(first, last))
+        .group_by("week_start")
+        .agg(pl.col("planned_spend_inr").sum().round(SUM_DECIMALS).alias("planned"))
+    )
+    j = planned.join(realized, on="week_start", how="left").with_columns(
+        pl.col("realized").fill_null(0.0)
+    )
+    bad = j.filter((pl.col("planned") > 0) & (pl.col("realized") <= 0))
+    n_weeks = (last - first).days // 7 + 1
+    if bad.height <= share * n_weeks:
+        return []
+    last_spend = dmax(realized.filter(pl.col("realized") > 0)["week_start"])
+    return [
+        Issue(
+            "marketing_daily",
+            "spend_inr",
+            "spend_plan_divergence",
+            "warning",
+            f"{bad.height} of {n_weeks} history weeks have planned D2C spend but zero realized "
+            f"spend (last realized spend: week of {last_spend}); response model and funnel "
+            "metrics will be low-confidence",
+            bad.height,
+        )
+    ]

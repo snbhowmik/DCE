@@ -15,6 +15,8 @@ import polars as pl
 
 from dce.capacity.model import CapacityForecast
 from dce.forecast.run import DatasetForecast
+from dce.numerics import SUM_DECIMALS
+from dce.scope import planning_skus
 
 
 @dataclass(frozen=True)
@@ -148,13 +150,8 @@ def build_inputs(
 ) -> PlanInputs:
     horizon = forecast.horizon
     months = split_months(horizon, list(opt.get("month_weeks", [4, 4, 5])))
-    sku = str(
-        tables["skus"]
-        .filter(
-            (pl.col("status") == "production") & (pl.col("product_line") == capacity.product_line)
-        )
-        .sort("sku_id")["sku_id"][0]
-    )
+    skus_in_scope = planning_skus(tables["skus"])
+    sku = skus_in_scope[0]
     sids, dem_paths = forecast.paths()
     series = forecast.series
 
@@ -185,8 +182,21 @@ def build_inputs(
     weeks_per_month = np.array([len(m.weeks) for m in months], dtype=float)
     carry_limit = cap_in / weeks_per_month * capacity.perishability.carryover_weeks
 
-    price = float(tables["skus"].filter(pl.col("sku_id") == sku)["list_price_d2c_inr_per_kg"][0])
-    p_d2c = np.full(len(regions), price)
+    # D2C price per region: list prices weighted by that region's forecast P50 SKU mix.
+    list_price = dict(tables["skus"].select("sku_id", "list_price_d2c_inr_per_kg").iter_rows())
+    mix = (
+        forecast.quantiles()
+        .filter(pl.col("channel") == "D2C")
+        .group_by("region_id", "sku_id")
+        .agg(pl.col("q50").sum().round(SUM_DECIMALS))
+    )
+    p_d2c = np.zeros(len(regions))
+    for i, reg in enumerate(regions):
+        g = mix.filter(pl.col("region_id") == reg)
+        w = g["q50"].to_numpy()
+        prices = np.array([float(list_price[s_]) for s_ in g["sku_id"]])
+        p_d2c[i] = float((w * prices).sum() / w.sum()) if w.sum() > 0 else float(prices.mean())
+    price = float(p_d2c.mean()) if len(regions) else float(list_price[sku])
     goodwill = p_d2c * float(opt.get("goodwill_fraction_of_price", 0.25))
     acct = tables["b2b_accounts"].filter(pl.col("account_id").is_in(accounts)).sort("account_id")
     p_b2b = acct["contract_price_inr_per_kg"].fill_null(price).to_numpy().astype(float)
@@ -201,10 +211,18 @@ def build_inputs(
 
     cold = dict(tables["regions"].select("region_id", "cold_chain_available").iter_rows())
     pm = tables["product_matrix"]
+
+    def elig(channel: str, region: str) -> np.ndarray:
+        # a region/account is eligible in a month if any in-scope SKU is
+        out = np.zeros(len(months), dtype=bool)
+        for s_ in skus_in_scope:
+            out |= _eligible(pm, s_, channel, region, months)
+        return out
+
     d2c_elig = np.array(
-        [_eligible(pm, sku, "D2C", r, months) & bool(cold.get(r, False)) for r in regions]
+        [elig("D2C", r) & bool(cold.get(r, False)) for r in regions], dtype=bool
     ).reshape(len(regions), len(months))
-    b2b_elig = np.array([_eligible(pm, sku, "B2B", r, months) for r in account_region]).reshape(
+    b2b_elig = np.array([elig("B2B", r) for r in account_region], dtype=bool).reshape(
         len(accounts), len(months)
     )
 
@@ -228,5 +246,5 @@ def build_inputs(
         concentration_cap=float(opt.get("concentration_cap", 0.30)),
         floor_penalty=float(opt.get("floor_penalty_inr_per_kg", 1e6)),
         initial_inventory=float(opt.get("initial_inventory_kg", 0.0)),
-        meta={"sku_id": sku, "mode": mode.name, "product_line": capacity.product_line},
+        meta={"skus": skus_in_scope, "mode": mode.name, "product_line": capacity.product_line},
     )

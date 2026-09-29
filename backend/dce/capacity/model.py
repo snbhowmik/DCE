@@ -17,6 +17,7 @@ import polars as pl
 
 from dce.capacity.coman import CoManPartner, load_partners
 from dce.capacity.inhouse import InHouseCapacity, InHouseConfig, simulate_inhouse
+from dce.scope import production_line
 
 QUANTILES = (0.1, 0.5, 0.9)
 
@@ -80,17 +81,6 @@ class CapacityForecast:
         self.inhouse.params_frame().write_parquet(files["capacity_params"])
         pl.DataFrame([p.summary() for p in self.partners]).write_parquet(files["coman_partners"])
         return files
-
-
-def production_line(skus: pl.DataFrame) -> str:
-    lines = skus.filter(pl.col("status") == "production")["product_line"].unique().sort().to_list()
-    if not lines:
-        raise ValueError("no SKU in production status")
-    if len(lines) > 1:
-        raise NotImplementedError(
-            f"multiple production lines {lines}: v1 plans one commercial line (A-001)"
-        )
-    return str(lines[0])
 
 
 def capacity_quantiles(paths: np.ndarray, horizon: list[date], planned: np.ndarray) -> pl.DataFrame:

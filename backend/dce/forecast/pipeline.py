@@ -51,6 +51,7 @@ class ForecastConfig:
     block_weeks: int = 4
     calib_min_points: int = 30
     models: tuple[str, ...] = ALL_MODELS
+    b2b_rolling_renewal: bool = True
     anomaly: AnomalyConfig = field(default_factory=AnomalyConfig)
 
     @classmethod
@@ -68,6 +69,7 @@ class ForecastConfig:
             block_weeks=int(f.get("block_weeks", d.block_weeks)),
             calib_min_points=int(f.get("calib_min_points", d.calib_min_points)),
             models=tuple(f.get("models", d.models)),
+            b2b_rolling_renewal=bool(f.get("b2b_rolling_renewal", d.b2b_rolling_renewal)),
             anomaly=AnomalyConfig.from_scoring(scoring),
         )
 

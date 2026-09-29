@@ -349,9 +349,10 @@ def validate_manifest(path: Path, world_dir: Path) -> tuple[dict[str, Any] | Non
             )
         )
     try:
-        if date.fromisoformat(manifest["end_date"]) < date.fromisoformat(manifest["start_date"]):
+        start = date.fromisoformat(manifest["history_start"])
+        if date.fromisoformat(manifest["history_end"]) < start:
             issues.append(
-                Issue("manifest", "end_date", "manifest", "error", "end_date < start_date")
+                Issue("manifest", "history_end", "manifest", "error", "history_end < history_start")
             )
     except (KeyError, TypeError, ValueError):
         pass

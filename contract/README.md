@@ -253,8 +253,8 @@ Row rules:
   "required": [
     "world_id",
     "contract_version",
-    "start_date",
-    "end_date",
+    "history_start",
+    "history_end",
     "generated_at"
   ],
   "properties": {
@@ -266,13 +266,20 @@ Row rules:
       "type": "string",
       "pattern": "^\\d+\\.\\d+\\.\\d+$"
     },
-    "start_date": {
+    "history_start": {
       "type": "string",
-      "format": "date"
+      "format": "date",
+      "description": "first history day"
     },
-    "end_date": {
+    "history_end": {
       "type": "string",
-      "format": "date"
+      "format": "date",
+      "description": "last history day"
+    },
+    "plan_end": {
+      "type": "string",
+      "format": "date",
+      "description": "last day covered by forward-looking plans"
     },
     "generated_at": {
       "type": "string",

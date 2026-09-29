@@ -304,6 +304,21 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Consequences:** a regression test repeats the aggregations 40× under allocator churn and requires bit-identical output. New aggregations must use the same rounding.
 - **Refs:** PRD NFR-2; T4.1, T5.2
 
+### D-038 · Active contracts ending at the snapshot boundary are rolling renewals · 2026-09-29 · accepted (supersedes A-010 for this case)
+- **Context:** in every world, all active accounts have `contract_end` = day after `history_end`. world_01_drop2 (13 more weeks) shows the same accounts still active with the same end date, ordering 17,075 kg after it (≈1,313 kg/week vs ≈1,270 before). Under A-010 the app zeroed all B2B demand after week 1.
+- **Decision:** with `forecast.b2b_rolling_renewal: true`, an **active** account whose `contract_end` ≤ first horizon week + 6 days gets `effective_end = null` and `end_assumed_rolling = true`; a later `contract_end` is honored (T2.7 criterion unchanged). Semantics requested from the DGP side as CC-003.
+- **Refs:** A-010; T2.7; CC-003
+
+### D-039 · Planning scope is the production line's SKUs; D2C price is the forecast SKU mix · 2026-09-29 · accepted
+- **Context:** every world sells two production SKUs of one line (500 g and 1 kg, different prices and costs); world_02/05 contain a trickle of orders for pilot SKUs of other lines, and world_05 has batches for a second line.
+- **Decision:** `dce.scope.planning_skus` = production-status SKUs of the single production line (A-001). Out-of-scope demand is excluded from forecasting and allocation and reported (`DatasetForecast.out_of_scope`). The optimizer's D2C price per region is the list-price average weighted by that region's forecast P50 SKU mix; a region/account is eligible in a month if any in-scope SKU is.
+- **Refs:** A-001; ARCH §5.4, §5.7; T5.1
+
+### D-040 · Response-model identification guards and a spend-data check · 2026-09-29 · accepted
+- **Context:** on the delivered worlds, realized spend stops after 22–56 weeks (DQ-001); fits then pinned θ and α to their bounds with a consistent (but meaningless) bootstrap, and nothing flagged them.
+- **Decision:** two new `low_confidence` reasons: fewer than `response.min_spend_weeks` (26) weeks with non-zero spend, and any of θ, α, log κ within 1% of its search bound ("not identified"). New ingest warning `spend_plan_divergence` when > 10% of history weeks have planned D2C spend but zero realized spend.
+- **Refs:** ARCH §5.6; PRD FR-1; T4.1; DQ-001
+
 ---
 
 ## 2. Assumptions register
@@ -333,7 +348,7 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Impact if wrong:** underestimates joint shortfall risk.
 - **Validate:** residual correlation analysis in backtests (T2.6); if significant, sample joint residuals.
 
-### A-010 · B2B contracts are not assumed to renew within the horizon · open
+### A-010 · B2B contracts are not assumed to renew within the horizon · invalidated for snapshot-boundary end dates (D-038)
 - **Why assumed:** the contract carries no renewal field; assuming renewal would create demand the company has no agreement for.
 - **Impact if wrong:** B2B demand is understated after `contract_end`, freeing capacity that may actually be needed.
 - **How to validate:** ask Biokraft for renewal rates (Q-004); a renewal-probability field could be a contract change.
@@ -364,6 +379,19 @@ Every task completion, design decision, assumption, contract change, integrity e
   5. Natural keys (duplicates are warnings, summed): capacity_plan, coman_activity, marketing_plan, marketing_daily, product_matrix.
 - **Reason:** the app must reject malformed drops deterministically and with locations; the DGP side needs the same reading to emit conforming files. Full rendering in `contract/README.md`.
 - **Version bump:** none (1.0.0); clarifications only. To be confirmed by the DGP side.
+
+### CC-002 · 2026-09-29 · status: accepted
+- **Change:** manifest date fields are `history_start`, `history_end` (required) and `plan_end` (optional), as shipped by the DGP; supersedes CC-001 item 2's `start_date`/`end_date`.
+- **Reason:** the DGP shipped first and the names are clearer; the schema stays closed.
+- **Version bump:** none (1.0.0).
+
+### CC-003 · 2026-09-29 · status: requested
+- **Change:** `b2b_accounts.contract_end` must be the agreement's real forward end date, or empty for evergreen/auto-renewing contracts.
+- **Reason:** active accounts currently carry an end date at the snapshot boundary and keep ordering after it (D-038).
+- **Version bump:** none (semantics clarification).
+
+### DQ-001 · 2026-09-29 · status: reported to DGP side
+- **Issue:** realized D2C marketing spend (and the funnel counts) is zero for most of history in every world while planned spend is positive throughout. Details in `contract/DGP_FEEDBACK.md`.
 
 ## 5. Integrity events
 
@@ -599,4 +627,15 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-037
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** IE-001 logged the same day (worlds unblinded before ingest).
+
+
+
+### TL-025 · DGP integration · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** ingested all 7 delivered drops (world_01–06 + world_01_drop2; 0 errors after CC-002). End-to-end run on world_01 (156 weeks, 217k orders): forecast 34 s, response 10 s, capacity + LP < 1 s (≈44 s total, inside NFR-1). Fixed: manifest names (CC-002); rolling B2B renewals (D-038); planning scope + SKU-mix price (D-039); response identification guards + spend/plan ingest check (D-040). Wrote `contract/DGP_FEEDBACK.md` for the DGP side (CC-003, DQ-001, handoff hygiene).
+- **Files touched:** `backend/dce/{scope,contract/spec,contract/validate,ingest/checks,forecast/run,forecast/b2b,forecast/pipeline,capacity/model,optimize/inputs,response/fit}.py`, `config/app.yaml`, fixture regenerated, tests
+- **Tests:** 3 added / 200 passing
+- **Decisions made:** D-038, D-039, D-040; CC-002 accepted; CC-003 + DQ-001 raised
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** results on these worlds are unblinded (IE-001). Because of DQ-001, spend co-optimization (T5.3) will hold every region at plan on this set; spend features need regenerated worlds to be exercised.
 

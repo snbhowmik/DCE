@@ -409,12 +409,17 @@ MANIFEST_SCHEMA: dict[str, object] = {
     "description": "Per-world manifest. Must not describe the world's regime.",
     "type": "object",
     "additionalProperties": False,
-    "required": ["world_id", "contract_version", "start_date", "end_date", "generated_at"],
+    "required": ["world_id", "contract_version", "history_start", "history_end", "generated_at"],
     "properties": {
         "world_id": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"},
         "contract_version": {"type": "string", "pattern": r"^\d+\.\d+\.\d+$"},
-        "start_date": {"type": "string", "format": "date"},
-        "end_date": {"type": "string", "format": "date"},
+        "history_start": {"type": "string", "format": "date", "description": "first history day"},
+        "history_end": {"type": "string", "format": "date", "description": "last history day"},
+        "plan_end": {
+            "type": "string",
+            "format": "date",
+            "description": "last day covered by forward-looking plans",
+        },
         "generated_at": {"type": "string", "format": "date-time"},
         "files": {
             "type": "object",
