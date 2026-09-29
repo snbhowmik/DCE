@@ -362,6 +362,12 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Consequences:** the D-047 world_06 observation overstated STABILITY's contribution gap by the double-counted waste cost; T11 will use the corrected metric.
 - **Refs:** ARCH §9.9; D-046, D-047; T5.9
 
+### D-049 · LLM layer targets a small hosted or offline model · 2026-09-29 · proposed
+- **Context:** the owner will run the AI layer on a very small (low-token) provider or an offline LLM, not the Anthropic SDK assumed in ARCH §5.11. Small models write weaker prose, handle long prompts badly and are unreliable at free-form JSON, so the full `RunPayload` JSON prompt and "structured output" in ARCH §5.11 do not carry over.
+- **Decision (proposed):** (1) `LLMClient` gets an OpenAI-compatible chat implementation (`base_url`, `model`, optional key from env). That one client covers Ollama, llama.cpp server, vLLM, LM Studio and most low-cost hosted APIs. `provider: none` is a supported setting: the template brief is the product, not a degraded fallback. (2) The narrative prompt gets a compact digest of the payload (headline KPIs, top breaches or mitigations, binding constraints; a token budget from config), not the full payload. The NumberGroundingValidator is unchanged and still checks against the full payload. (3) Scenario parsing tries a deterministic grammar or regex parser for the ARCH §5.11 levers first. The LLM is only a fallback, constrained to the `ScenarioSpec` JSON schema (grammar or `response_format` where the server supports it) and validated by pydantic. On failure it returns `unsupported`. (4) Tests use a fake client, and CI makes no network calls.
+- **Consequences:** P4 is unchanged. The system still works with no LLM at all. T9.3's 15-prompt acceptance set must pass with `provider: none` (deterministic parser alone) for supported phrasings.
+- **Refs:** IDEATION P4; ARCH §5.11, §8 (security: outbound calls only to the configured LLM endpoint, none when offline); T9.1–T9.3
+
 ---
 
 ## 2. Assumptions register

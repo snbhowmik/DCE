@@ -160,7 +160,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 
 ## Phase 9 — AI layer
 
-- [ ] **T9.1 `LLMClient` + Anthropic implementation** (env key, model from config, timeout/retry, prompt + response logging with secrets redacted).
+- [ ] **T9.1 `LLMClient` + OpenAI-compatible implementation (small/offline models; `provider: none`) per D-049** (env key, model from config, timeout/retry, prompt + response logging with secrets redacted).
 - [ ] **T9.2 Narrative + NumberGroundingValidator + template fallback**
   *Accept:* validator test with an injected fake number → rejected; fallback template renders.
 - [ ] **T9.3 Scenario parser + executor + diff**
