@@ -147,7 +147,13 @@ def precompute_cmd(
     modes = modes or ["STABILITY", "GROWTH", "D2C_EXPANSION"]
     if not worlds:
         with Session(engine) as s:
-            worlds = sorted({d.world_id for d in s.exec(select(Dataset)) if d.n_errors == 0})
+            worlds = sorted(
+                {
+                    d.world_id
+                    for d in s.exec(select(Dataset))
+                    if d.n_errors == 0 and not d.source_path.startswith("data/fixtures")
+                }
+            )
     failed = 0
     for w in worlds:
         t0 = time.time()

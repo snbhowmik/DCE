@@ -1,26 +1,255 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   Tokens. Light and dark are each *selected* (dataviz reference palette),
+   not a flip. Series colors identify entities and never carry status;
+   status colors are reserved for alerts and always ship with icon + label.
+   ========================================================================== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  color-scheme: light;
+  --plane: #f4f4f1;
+  --surface: #fcfcfb;
+  --surface-2: #f0efec;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --ink-3: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --hair: rgba(11, 11, 11, 0.1);
+  --brand: #ff3300; /* wordmark + active nav only */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* entities (validated all-pairs, light surface) */
+  --s-d2c: #2a78d6;
+  --s-b2b: #eb6834;
+  --s-supply: #1baf7a;
+  --s-demand: #3a3935; /* total demand: neutral, not a categorical slot */
+  --band-demand: rgba(58, 57, 53, 0.1);
+  --band-supply: rgba(27, 175, 122, 0.16);
+
+  /* diverging (z-scores): blue ↔ red around a gray midpoint */
+  --div-pos: #2a78d6;
+  --div-neg: #e34948;
+
+  /* status (fixed) */
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --good-text: #006300;
+  --critical-text: #b42d2d;
+  --warning-text: #8a5a00;
+  --critical-wash: rgba(208, 59, 59, 0.08);
+  --warning-wash: rgba(250, 178, 25, 0.14);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --plane: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #232321;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-3: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --hair: rgba(255, 255, 255, 0.1);
+    --s-d2c: #3987e5;
+    --s-b2b: #d95926;
+    --s-supply: #199e70;
+    --s-demand: #d8d6cf;
+    --band-demand: rgba(216, 214, 207, 0.1);
+    --band-supply: rgba(25, 158, 112, 0.2);
+    --div-pos: #3987e5;
+    --div-neg: #e66767;
+    --good-text: #0ca30c;
+    --critical-text: #ef7070;
+    --warning-text: #fab219;
+    --critical-wash: rgba(208, 59, 59, 0.16);
+    --warning-wash: rgba(250, 178, 25, 0.12);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --plane: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #232321;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --ink-3: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --hair: rgba(255, 255, 255, 0.1);
+  --s-d2c: #3987e5;
+  --s-b2b: #d95926;
+  --s-supply: #199e70;
+  --s-demand: #d8d6cf;
+  --band-demand: rgba(216, 214, 207, 0.1);
+  --band-supply: rgba(25, 158, 112, 0.2);
+  --div-pos: #3987e5;
+  --div-neg: #e66767;
+  --good-text: #0ca30c;
+  --critical-text: #ef7070;
+  --warning-text: #fab219;
+  --critical-wash: rgba(208, 59, 59, 0.16);
+  --warning-wash: rgba(250, 178, 25, 0.12);
+}
+
+@theme inline {
+  --color-plane: var(--plane);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-grid: var(--grid);
+  --color-hair: var(--hair);
+  --color-brand: var(--brand);
+  --color-good: var(--good-text);
+  --color-critical: var(--critical-text);
+  --color-warning: var(--warning-text);
+  --font-sans: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+  --font-display: var(--font-archivo);
+}
+
+html,
+body {
+  background: var(--plane);
+  color: var(--ink);
+}
+body {
+  font-family: var(--font-plex-sans), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tabular figures only where numbers align in columns */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   Traceability: every number carries its run_id + source field (NFR-3).
+   Hover (or focus) a figure to see where it came from.
+   ========================================================================== */
+.trace {
+  position: relative;
+  cursor: help;
+  text-decoration: underline dotted transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.15s;
+}
+.trace:hover,
+.trace:focus-visible {
+  text-decoration-color: var(--ink-3);
+  outline: none;
+}
+.trace::after {
+  content: attr(data-trace);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%) translateY(2px);
+  white-space: pre;
+  font: 500 11px/1.4 var(--font-plex-mono), ui-monospace, monospace;
+  letter-spacing: 0;
+  color: var(--surface);
+  background: var(--ink);
+  padding: 6px 8px;
+  border-radius: 4px;
+  display: none; /* not laid out until shown, so hidden tooltips never widen the page */
+  pointer-events: none;
+  z-index: 50;
+  text-align: left;
+}
+.trace:hover::after,
+.trace:focus-visible::after {
+  display: block;
+  animation: traceIn 0.12s ease-out 0.25s both;
+}
+@keyframes traceIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Tables */
+.dtable {
+  width: 100%;
+  border-collapse: collapse;
+}
+.dtable th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--ink-3);
+  padding: 8px 12px 8px 0;
+  border-bottom: 1px solid var(--axis);
+  white-space: nowrap;
+}
+.dtable td {
+  padding: 8px 12px 8px 0;
+  border-bottom: 1px solid var(--grid);
+  vertical-align: middle;
+}
+.dtable th.r,
+.dtable td.r {
+  text-align: right;
+}
+.dtable tr:last-child td {
+  border-bottom: 0;
+}
+.dtable tbody tr:hover td {
+  background: var(--surface-2);
+}
+
+/* Skeleton shimmer while a payload loads */
+@keyframes shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 0%, var(--grid) 50%, var(--surface-2) 100%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 6px;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fade-up {
+  animation: fadeUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Grid items may shrink below their content's intrinsic width (charts measure their container). */
+.grid > * {
+  min-width: 0;
 }

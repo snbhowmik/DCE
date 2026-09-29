@@ -60,6 +60,18 @@ make test                           # all tests incl. invariants
 
 Or everything at once: `docker compose up`.
 
+### Dashboard (what reviewers see)
+
+```bash
+uv run dce precompute     # or: make precompute; plans every world in 3 modes and stores the payloads
+make run-api              # terminal 1: FastAPI on :8000
+make run-web              # terminal 2: dashboard on http://localhost:3000
+```
+
+The dashboard reads stored runs, so every screen loads instantly; **Re-run world** re-plans in the background.
+For the AI-written brief, put a Groq key in `.env` (`GROQ_API_KEY=…`, see `.env.example`). Without a key the brief
+falls back to a deterministic template. Either way, every number in it is checked against the run (D-053).
+
 ---
 
 ## Repository layout

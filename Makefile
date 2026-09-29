@@ -1,4 +1,4 @@
-.PHONY: setup test lint fmt typecheck run-api run-web
+.PHONY: setup test lint fmt typecheck run-api run-web precompute
 
 UV := uv
 BACKEND := backend
@@ -26,3 +26,6 @@ run-api:
 
 run-web:
 	cd frontend && pnpm dev
+
+precompute:                        # run + store payloads for every world × mode (≈4 min, all 7 worlds)
+	$(UV) run dce precompute

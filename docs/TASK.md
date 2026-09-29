@@ -169,15 +169,15 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 
 ## Phase 10 — Frontend
 
-- [ ] **T10.1 App shell, API client, dataset + mode selector**
-- [ ] **T10.2 Overview** (demand/capacity fan charts, breach/surplus markers, KPIs, narrative)
-- [ ] **T10.3 Allocation plan** (tables, spend, mode compare, baseline compare, stress results)
-- [ ] **T10.4 Markets** (region scorecards with RES breakdown)
-- [ ] **T10.5 B2B accounts + onboarding simulator**
-- [ ] **T10.6 Alerts & mitigations**
-- [ ] **T10.7 Scenarios**
-- [ ] **T10.8 Decision log** (accept/reject with reason)
-- [ ] **T10.9 Data & model health** (validation, backtests, coverage, anomalies)
+- [x] **T10.1 App shell, API client, dataset + mode selector**
+- [x] **T10.2 Overview** (demand/capacity fan charts, breach/surplus markers, KPIs, narrative)
+- [x] **T10.3 Allocation plan** (tables, spend, mode compare, baseline compare, stress results)
+- [x] **T10.4 Markets** (region scorecards with RES breakdown)
+- [~] **T10.5 B2B accounts + onboarding simulator**
+- [~] **T10.6 Alerts & mitigations**
+- [~] **T10.7 Scenarios**
+- [x] **T10.8 Decision log** (accept/reject with reason)
+- [x] **T10.9 Data & model health** (validation, backtests, coverage, anomalies)
   *Accept (all):* every number shows a tooltip with run_id + source; P10–P90 band always shown with P50.
   *Depends:* T8.3, T9.3
 

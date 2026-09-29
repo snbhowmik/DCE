@@ -810,3 +810,12 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Deviations from ARCH:** `/compare` is a GET over stored runs instead of `POST /runs/compare`; `POST /runs` takes `world_id` + `modes`
 - **Known issues / follow-ups:** remaining endpoints land with T6.3, T7.1, T9.3
 
+### TL-037 · T10.1–T10.9 (T10.5–T10.7 partial) · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** Next.js 16 dashboard over the API (same-origin rewrite to FastAPI). Shell with world picker, strategy switch, run provenance and background re-run. Screens: Overview (grounded brief, KPI tiles with P10/P90, weekly demand vs. supply fan with alert spans and crosshair tooltip, alerts, D2C/B2B split, three-mode comparison), Allocation plan (line × month matrix with solver reasons, co-man with accept/reject, shadow prices, stress test vs. three rule baselines, spend by region), Markets (RES with z-score components, whole-history funnel, CAC/LTV, response-model status, D2C forecast sparkline, spend), B2B accounts (AQS components, commitments, capacity share, plan fill, forecast), Alerts (episode cards with act-by for co-man, weekly probability chart against thresholds, weekly table, M1–M6 playbook), Scenarios and the onboarding simulator as explicit upcoming states (T9.3, T7.1), Decision log, Data & model health (validation issues, selection, backtest MASE vs. baseline, coverage raw → calibrated, anomalies, forecast-hash identity across modes). Every figure carries a hover trace of run_id + payload field (NFR-3); every forecast shows its P10–P90 band. Hand-written SVG charts; palette validated with the dataviz validator (all-pairs, light and dark: pass; aqua below 3:1 on light → direct labels). Light and dark themes. API: fixture datasets hidden from `/datasets` by default and skipped by `dce precompute` (TASK rule 6); `/compare` returns forecast hashes. `make precompute`; README dashboard section.
+- **Files touched:** `frontend/{app,components,lib}/**`, `frontend/next.config.ts`, `backend/dce/{api/app,cli}.py`, `backend/dce/tests/test_api.py`, `Makefile`, `README.md`
+- **Tests:** backend 271 passing; frontend `tsc`, `eslint` and `next build` clean; every screen checked in headless Chrome at 1440 px for overflow (none) and visually
+- **Decisions made:** none (D-051)
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** T10.5 onboarding form, T10.6 ranked mitigations and T10.7 scenario box wait on T7.1, T6.2–T6.3 and T9.3. No frontend unit tests yet.
+

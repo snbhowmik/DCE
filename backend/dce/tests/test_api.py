@@ -22,7 +22,8 @@ def client(runs: tuple[Any, list[Any]]) -> Iterator[TestClient]:  # noqa: F811
 
 
 def test_datasets_and_runs(client: TestClient, runs: tuple[Any, list[Any]]) -> None:  # noqa: F811
-    ds = client.get("/api/v1/datasets").json()
+    assert client.get("/api/v1/datasets").json() == []  # fixtures hidden by default (rule 6)
+    ds = client.get("/api/v1/datasets", params={"include_fixtures": True}).json()
     assert [d["world_id"] for d in ds] == ["tiny_world"]
     assert {r["mode"] for r in ds[0]["runs"]} == {"STABILITY", "GROWTH"}
     rows = client.get("/api/v1/runs", params={"world": "tiny_world", "mode": "GROWTH"}).json()

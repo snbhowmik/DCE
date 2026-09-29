@@ -81,8 +81,15 @@ def health() -> dict[str, Any]:
     return {"status": "ok", "version": __version__}
 
 
+def is_fixture(d: Dataset) -> bool:
+    """Unit-test fixtures are never shown as results (TASK.md rule 6)."""
+    return d.source_path.replace("\\", "/").startswith("data/fixtures")
+
+
 @app.get("/api/v1/datasets")
-def datasets(engine: Engine = Depends(get_engine)) -> list[dict[str, Any]]:
+def datasets(
+    include_fixtures: bool = False, engine: Engine = Depends(get_engine)
+) -> list[dict[str, Any]]:
     from dce.service import latest_runs, validation_report
 
     runs: dict[str, list[dict[str, Any]]] = {}
@@ -92,7 +99,7 @@ def datasets(engine: Engine = Depends(get_engine)) -> list[dict[str, Any]]:
         rows = s.exec(select(Dataset).order_by(Dataset.world_id)).all()
     out, seen = [], set()
     for d in rows:
-        if d.world_id in seen or d.n_errors:
+        if d.world_id in seen or d.n_errors or (is_fixture(d) and not include_fixtures):
             continue
         seen.add(d.world_id)
         rep = validation_report(d.dataset_hash) or {}
@@ -182,6 +189,7 @@ def compare(
             {
                 "mode": m,
                 "run_id": p["run"]["run_id"],
+                "forecast_hash": p["run"]["forecast_hash"],
                 "kpis": p["kpis"],
                 "stress": p["stress"]["summary"],
                 "allocation": [
