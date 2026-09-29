@@ -776,3 +776,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-050, D-051, D-052
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** none
+
+### TL-034 · D-051 run payload · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.payload` builds one strict-JSON document per run (provenance, KPIs, demand history + forecast fans by channel/region/account, capacity history + in-house and with-plan supply bands, allocation with drivers, spend, co-man, binding constraints, stress + baseline comparison, risk alerts, market scorecards with 12-month and whole-history funnels, account table with AQS, data and model health). `dce.service.run_modes` plans several modes on one shared upstream stage, records each run and stores `payload.json` as a run artifact; `latest_runs` / `payload_path` serve the API. `dce precompute` runs worlds × modes.
+- **Files touched:** `backend/dce/{payload,service,cli}.py`, `backend/dce/tests/test_payload.py`
+- **Tests:** 5 added / 252 passing (runs succeed + listed; strict JSON with provenance; numbers consistent with the plan and horizon; forecast hash identical across modes through the payloads; `clean`)
+- **Decisions made:** none (D-051)
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** CAC and CPL are `null` (not ₹0) where realized spend is zero (DQ-001), so the 12-month funnel is mostly empty on the delivered worlds; the Markets screen also shows whole-history funnels. world_06 all three modes: 28.8 s.
+

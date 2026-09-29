@@ -122,6 +122,42 @@ def run_cmd(
         )
 
 
+WORLDS_OPT = typer.Option(None, "--world", help="world_id (repeatable); default: all")
+MODES_OPT = typer.Option(
+    None, "--mode", help="mode (repeatable); default: STABILITY, GROWTH, D2C_EXPANSION"
+)
+
+
+@app.command("precompute")
+def precompute_cmd(
+    worlds: list[str] = WORLDS_OPT,
+    modes: list[str] = MODES_OPT,
+    seed: int | None = typer.Option(None, "--seed"),
+) -> None:
+    """Run and persist payloads for worlds × modes (forecast computed once per world)."""
+    import time
+
+    from sqlmodel import Session, select
+
+    from dce.service import run_modes
+    from dce.store.db import make_engine
+    from dce.store.models import Dataset
+
+    engine = make_engine()
+    modes = modes or ["STABILITY", "GROWTH", "D2C_EXPANSION"]
+    if not worlds:
+        with Session(engine) as s:
+            worlds = sorted({d.world_id for d in s.exec(select(Dataset)) if d.n_errors == 0})
+    failed = 0
+    for w in worlds:
+        t0 = time.time()
+        for r in run_modes(engine, w, modes, seed):
+            failed += r.status != "succeeded"
+            typer.echo(f"{w:<16} {r.mode:<14} {r.status:<10} {r.run_id}")
+        typer.echo(f"{w}: {time.time() - t0:.1f}s")
+    raise typer.Exit(1 if failed else 0)
+
+
 contract_app = typer.Typer(no_args_is_help=True, help="Data contract tools.")
 app.add_typer(contract_app, name="contract")
 
