@@ -128,7 +128,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 - [x] **T5.2 Strategy modes from YAML** (pydantic-validated config; CUSTOM mode). *Depends:* T5.1
 - [x] **T5.3 Spend co-optimization** (constraints 2, 6, 7 with response segments, lag distribution, evidence gate, exploration pool). *Depends:* T5.2, T4.2, T1.4
 - [x] **T5.4 Co-man MILP extension** (constraint 8, min-active linking). *Depends:* T5.3
-- [ ] **T5.5 Soft constraints + infeasibility diagnostics.** *Depends:* T5.4
+- [x] **T5.5 Soft constraints + infeasibility diagnostics.** *Depends:* T5.4
 - [ ] **T5.6 Explanations** (binding constraints, shadow prices via LP relaxation, top drivers per line). *Depends:* T5.5
 - [ ] **T5.7 Monte Carlo stress test.** *Depends:* T5.5
 - [ ] **T5.8 Rule baselines** (proportional, B2B-first, FCFS) through the same stress test. *Depends:* T5.7

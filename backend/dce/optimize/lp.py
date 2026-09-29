@@ -37,6 +37,14 @@ class LpModel:
     supply_extra: dict[int, Any] = field(default_factory=dict)  # co-man etc. add to supply
     d2c_extra: dict[tuple[int, int], Any] = field(default_factory=dict)  # spend lift adds demand
     objective_terms: list[Any] = field(default_factory=list)
+    # name → (slack variable, penalty per unit, kind, description); reported when non-zero
+    slacks: dict[str, tuple[pulp.LpVariable, float, str, str]] = field(default_factory=dict)
+
+    def soft(self, name: str, penalty: float, kind: str, description: str) -> pulp.LpVariable:
+        """A penalized, reported slack for a constraint that may have to give (T5.5)."""
+        var = pulp.LpVariable(f"slack_{name}", 0)
+        self.slacks[name] = (var, penalty, kind, description)
+        return var
 
 
 def build_lp(inp: PlanInputs, mode: ModeParams) -> LpModel:
@@ -72,10 +80,8 @@ def finalize_lp(model: LpModel, inp: PlanInputs, mode: ModeParams) -> None:
     for (a, m), v in y.items():
         obj.append(mode.w_rev * inp.p_b2b[a] * v - mode.w_pen * inp.penalty[a] * s[a, m])
         obj.append(mode.w_reach * p_bar * inp.reach[a] * v)
-        obj.append(-inp.floor_penalty * f[a, m])
     for m in range(M):
         obj.append(-inp.waste_cost * waste[m])
-    prob += pulp.lpSum(obj + model.objective_terms)
 
     for m in range(M):
         prev = inv[m - 1] if m > 0 else inp.initial_inventory
@@ -91,9 +97,20 @@ def finalize_lp(model: LpModel, inp: PlanInputs, mode: ModeParams) -> None:
             prob += (y[a, m] + s[a, m] == c), f"b2b_a{a}_m{m}"  # (3)
             if inp.b2b_eligible[a, m]:
                 floor = mode.b2b_service_floor * c
+                model.slacks[f"floor_a{a}_m{m}"] = (
+                    f[a, m],
+                    inp.floor_penalty,
+                    "b2b_floor",
+                    f"{inp.accounts[a]} month {m}: below the "
+                    f"{mode.b2b_service_floor:.0%} service floor",
+                )
                 prob += (y[a, m] + f[a, m] >= floor), f"floor_a{a}_m{m}"  # (4)
             cap_total = inp.cap_in[m] + model.supply_extra.get(m, 0)
             prob += (y[a, m] <= inp.concentration_cap * cap_total), f"conc_a{a}_m{m}"  # (5)
+
+    # Objective last: every soft constraint (incl. floors above) has registered its slack.
+    slack_cost = [-pen * var for var, pen, _, _ in model.slacks.values()]
+    prob += pulp.lpSum(obj + model.objective_terms + slack_cost)
 
 
 @dataclass

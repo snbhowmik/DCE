@@ -51,6 +51,7 @@ class SpendInputs:
     res: dict[str, float]  # RES score by region (D2C)
     ltv_cac: dict[str, float]  # value per ₹ of acquisition spend
     budget: np.ndarray  # [M] ₹
+    soft_penalty: float = 100.0  # per ₹ of budget overrun / relaxed hold (≫ any lift value)
 
     @property
     def budget_total(self) -> float:
@@ -112,7 +113,13 @@ def add_spend(model: LpModel, inp: PlanInputs, sin: SpendInputs, mode: ModeParam
             if fixed:
                 # held at plan: no cut, expansion only via the exploration pool
                 hold = min(float(sin.planned[r, m]), float(curve.cap * wk[m]))
-                prob += (total_sp[r, m] >= hold), f"spend_hold_r{r}_m{m}"
+                h = model.soft(
+                    f"spend_hold_r{r}_m{m}",
+                    sin.soft_penalty,
+                    "spend_hold",
+                    f"{reg} month {m}: low-confidence spend cut below plan",
+                )
+                prob += (total_sp[r, m] + h >= hold), f"spend_hold_r{r}_m{m}"
         if fixed:
             v.fixed.append(r)
         if gated or fixed:
@@ -126,13 +133,16 @@ def add_spend(model: LpModel, inp: PlanInputs, sin: SpendInputs, mode: ModeParam
 
     for m in range(M):
         if any((r, m) in total_sp for r in range(R)):
+            over = model.soft(
+                f"budget_m{m}", sin.soft_penalty, "budget", f"month {m}: spend above budget"
+            )
             prob += (
                 (
                     pulp.lpSum(total_sp[r, m] for r in range(R) if (r, m) in total_sp)
-                    <= float(sin.budget[m])
+                    <= float(sin.budget[m]) + over
                 ),
                 f"budget_m{m}",
-            )  # (6)
+            )  # (6), soft
             # (7): gated / low-confidence regions share the exploration pool
             pool = pulp.lpSum(v.extra[r, m] for r in v.gated if (r, m) in v.extra)
             prob += (pool <= mode.exploration_share * float(sin.budget[m])), f"explore_m{m}"

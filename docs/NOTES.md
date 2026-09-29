@@ -336,6 +336,11 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decision:** `run_backtest(n_jobs)` runs (fold × model) cells in joblib/loky worker processes (`forecast.n_jobs: 8`). Cells are independent and seeded, so results are identical to serial (asserted by test). world_05: 68.6 s → 33.6 s.
 - **Refs:** ARCH §8; PRD NFR-1, NFR-2
 
+### D-044 · Soft constraints and diagnostics · 2026-09-29 · accepted
+- **Context:** ARCH §5.7: "on infeasibility, relax the soft constraints and report which slacks are non-zero". Audit: capacity balance, demand, and eligibility are always feasible (waste / unmet / shortfall absorb). Real conflicts: B2B floor vs concentration cap or capacity (already soft), and spend held at plan vs a reduced budget (e.g. a "cut budget 30%" what-if).
+- **Decision:** a slack registry on the model (`LpModel.soft`): every soft constraint has a named, penalized, described slack; the objective is assembled last so all registered slacks are costed (the first draft built it before floor slacks were registered, which would have made floors free; caught in review). Soft: B2B floor (₹1e6/kg), budget and low-confidence spend holds (100 per ₹, far above any lift value). `slack_report` / `diagnose` produce plain-language issues; non-optimal statuses get an explicit message instead of silently empty numbers. If a solve with forced co-man comes back infeasible, retry once without forcing and record a fallback note. With the current construction forcing is always feasible, so this is defensive; the test simulates it.
+- **Refs:** ARCH §5.7; PRD FR-14, NFR-7; T5.5
+
 ---
 
 ## 2. Assumptions register
@@ -671,4 +676,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-042, D-043
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** `dce run` timings on the delivered worlds: 34–51 s (NFR-1 met).
+
+### TL-028 · T5.5 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** slack registry (`LpModel.soft`, `slacks`), soft budget and spend holds, `dce.optimize.diagnostics` (`slack_report`, `diagnose`), `solve_plan` infeasibility fallback; plans carry `extras["slacks"]` and the model.
+- **Files touched:** `backend/dce/optimize/{lp,spend,plan,diagnostics}.py`, `backend/dce/tests/test_optimize_diagnostics.py`
+- **Tests:** 5 added / 222 passing (clean plan → no diagnostics; floor violation reported with amount and account; 30% budget cut below held plans is soft and the violation equals the cut; forced-co-man infeasibility fallback; non-optimal status diagnosed)
+- **Decisions made:** D-044
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** none
 

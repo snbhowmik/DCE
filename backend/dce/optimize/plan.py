@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 import numpy as np
@@ -9,6 +10,7 @@ import polars as pl
 
 from dce.metrics.scores import EvidenceScores
 from dce.optimize.coman import CoManInputs, add_coman, coman_table
+from dce.optimize.diagnostics import slack_report
 from dce.optimize.inputs import ModeParams, PlanInputs
 from dce.optimize.lp import PlanResult, build_lp, extract, finalize_lp
 from dce.optimize.solver import solve
@@ -26,15 +28,40 @@ def solve_plan(
     time_limit: float = 10.0,
     mip_gap: float = 0.005,
 ) -> PlanResult:
+    """Solve; if infeasible with forced co-man activations, retry once without them (T5.5)."""
+    out = _solve_once(inp, mode, spend, coman, time_limit, mip_gap)
+    if out.status == "Infeasible" and coman is not None and coman.forced_from:
+        relaxed = replace(coman, forced_from={})
+        retry = _solve_once(inp, mode, spend, relaxed, time_limit, mip_gap)
+        retry.extras.setdefault("fallbacks", []).append(
+            f"forced co-man activation {sorted(coman.forced_from)} was infeasible; "
+            "solved without forcing"
+        )
+        return retry
+    return out
+
+
+def _solve_once(
+    inp: PlanInputs,
+    mode: ModeParams,
+    spend: SpendInputs | None,
+    coman: CoManInputs | None,
+    time_limit: float,
+    mip_gap: float,
+) -> PlanResult:
     model = build_lp(inp, mode)
     sv = add_spend(model, inp, spend, mode) if spend is not None else None
     cv = add_coman(model, inp, coman, mode) if coman is not None else None
     finalize_lp(model, inp, mode)
     res = solve(model.prob, time_limit=time_limit, mip_gap=mip_gap)
     out = extract(model, res, inp, mode)
-    if cv is not None and coman is not None and out.optimal:
+    out.extras["model"] = model
+    if not out.optimal:
+        return out
+    out.extras["slacks"] = slack_report(model)
+    if cv is not None and coman is not None:
         out.extras["coman"] = coman_table(cv, inp, coman)
-    if sv is not None and spend is not None and out.optimal:
+    if sv is not None and spend is not None:
         out.extras["spend"] = spend_table(sv, inp, spend)
         out.extras["d2c_demand_effective"] = np.array(
             [
