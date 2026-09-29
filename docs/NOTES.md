@@ -345,6 +345,12 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decision:** pure LPs use their own duals. For the MILP, the LP relaxation fixes co-man activation binaries at their optimum but relaxes spend segment-order binaries to [0, 1]. Fixing the latter would also freeze which spend segments are open and zero the budget's marginal value; relaxed, the spend block is the standard concave PWL LP whose duals are exact whenever extra lift has positive value. Integrality is restored afterwards. Verified against hand-derived values: shortage capacity dual = marginal line value (₹1,500 + 0.3 × ₹375); surplus capacity = −waste cost; binding budget = next segment's slope × (price + waste avoided) − 1. The binding list covers only real limits (capacity, carryover, floors, concentration, budget, exploration, spend holds, co-man ceilings); demand equalities stay in `duals`. Per-line drivers carry stable codes: `fully_served`, `capacity_bound`, `at_service_floor`, `floor_violated`, `concentration_cap`, `ineligible`, `held_at_plan`, `evidence_gate`, `budget_binding`, `extrapolation_cap`, `marginal_value`.
 - **Refs:** ARCH §5.7; PRD NFR-7; T5.6
 
+### D-046 · Stress-test semantics · 2026-09-29 · accepted
+- **Context:** ARCH §5.7: "fix the plan; sample joint paths; simulate fulfillment with a priority rule (B2B floor first, then by solver shadow prices)". What "fixing" an allocation means under a different realized supply needs defining, and the same replay must score the rule baselines (T5.8).
+- **Decision:** the plan is a set of monthly **entitlements** (x, y), plus co-man requests and the spend-induced D2C demand shift. For each path and month: supply = in-house + co-man requested × sampled reliability + carry-in. (1) B2B floors = φ × min(order, entitlement), pro-rata if short; (2) entitlements min(demand, entitlement) in priority order; (3) leftover to remaining demand in priority order; (4) carry up to the limit, rest waste. Priority = the line's shadow price (value of +1 kg of its demand) from `explain`, falling back to weighted price + penalty/goodwill. Paths: forecast demand paths × capacity paths (independent, A-009) × per-week co-man reliability draws averaged per month, all seeded. Metrics per path: revenue, contribution (revenue − B2B penalties − waste cost − co-man cost − spend − in-house production cost), D2C/B2B fill rates, waste kg, served kg, and `any_b2b_shortfall` (any account-month short by > 0.1% of its orders). Summaries give mean/P10/P50/P90.
+- **Consequences:** `any_b2b_shortfall` is strict: in tight worlds it is near 1 even at 99% fill; B2B fill rate and penalty are the graded measures.
+- **Refs:** ARCH §5.7; PRD FR-18; A-009; T5.7
+
 ---
 
 ## 2. Assumptions register
@@ -696,6 +702,15 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Files touched:** `backend/dce/optimize/explain.py`, `backend/dce/tests/test_optimize_explain.py`
 - **Tests:** 5 added / 227 passing (shortage shadow price = hand value and drivers; surplus capacity = −waste cost; MILP budget dual via relaxation = next-segment value, integrality restored; capped region explained, budget worth ₹0; every line has coded reasons)
 - **Decisions made:** D-045
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** none
+
+### TL-030 · T5.7 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.optimize.stress` (`Scenarios` + `build_scenarios` from forecast/capacity paths and co-man reliability, `PlanDecision.from_plan` with shadow-price priorities, vectorized `stress_test`, `StressResult` summaries). The pipeline now returns explanation, scenarios and stress; `dce run` prints the stress summary. world_05 end to end incl. stress: 37.7 s.
+- **Files touched:** `backend/dce/optimize/stress.py`, `backend/dce/runner.py`, `backend/dce/cli.py`, `backend/dce/tests/test_optimize_stress.py`
+- **Tests:** 6 added / 233 passing (ample supply: exact revenue/waste/fill; never serves more than supply or demand; floors first under shortage; entitlements honored before value; shortfall probability rises as capacity tightens; fixture plan → scenarios → stress)
+- **Decisions made:** D-046
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** none
 

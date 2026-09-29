@@ -89,6 +89,15 @@ def run_cmd(
         .agg(pl.col("demand_kg", "allocated_kg", "unmet_kg").sum().round(0))
         .sort("channel", "month")
     )
+    typer.echo(
+        out.stress.summary_frame()
+        .filter(
+            pl.col("metric").is_in(
+                ["revenue_inr", "d2c_fill_rate", "b2b_fill_rate", "any_b2b_shortfall", "waste_kg"]
+            )
+        )
+        .with_columns(pl.col("mean", "p10", "p50", "p90").round(3))
+    )
     if "coman" in out.plan.extras:
         typer.echo(out.plan.extras["coman"].filter(pl.col("active")))
 

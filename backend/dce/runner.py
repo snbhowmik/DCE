@@ -17,10 +17,18 @@ from dce.config import load_app_config, load_scoring_config
 from dce.forecast.run import DatasetForecast, forecast_dataset
 from dce.metrics.scores import EvidenceScores, evidence_scores
 from dce.optimize.coman import CoManInputs, already_active_partners
+from dce.optimize.explain import Explanation, explain
 from dce.optimize.inputs import ModeParams, PlanInputs, build_inputs
 from dce.optimize.lp import PlanResult
 from dce.optimize.plan import build_spend_inputs, solve_plan
 from dce.optimize.spend import SpendInputs
+from dce.optimize.stress import (
+    PlanDecision,
+    Scenarios,
+    StressResult,
+    build_scenarios,
+    stress_test,
+)
 from dce.response.run import ResponseSet, fit_responses
 from dce.strategy import resolve_mode
 
@@ -95,6 +103,9 @@ class PipelineOutputs:
     spend: SpendInputs
     coman: CoManInputs
     plan: PlanResult
+    scenarios: Scenarios
+    stress: StressResult
+    explanation: Explanation
 
 
 @dataclass
@@ -141,9 +152,19 @@ def plan_stage(
         time_limit=float(opt.get("time_limit_s", 10)),
         mip_gap=float(opt.get("mip_gap", 0.005)),
     )
+    explanation = explain(plan)
+    scenarios = build_scenarios(inputs, up.forecast, up.capacity, coman.partners, run.seed)
+    stress = stress_test(
+        PlanDecision.from_plan(plan, coman.partners, explanation.duals),
+        scenarios,
+        inputs,
+        (mode.w_rev, mode.w_pen, mode.w_gw),
+        mode.b2b_service_floor,
+        unit_cost=up.capacity.perishability.waste_cost_inr_per_kg,
+    )
     return PipelineOutputs(
         run, window, up.forecast, up.capacity, up.responses, scores, mode, inputs, spend, coman,
-        plan,
+        plan, scenarios, stress, explanation,
     )  # fmt: skip
 
 
