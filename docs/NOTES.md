@@ -341,6 +341,10 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decision:** a slack registry on the model (`LpModel.soft`): every soft constraint has a named, penalized, described slack; the objective is assembled last so all registered slacks are costed (the first draft built it before floor slacks were registered, which would have made floors free; caught in review). Soft: B2B floor (₹1e6/kg), budget and low-confidence spend holds (100 per ₹, far above any lift value). `slack_report` / `diagnose` produce plain-language issues; non-optimal statuses get an explicit message instead of silently empty numbers. If a solve with forced co-man comes back infeasible, retry once without forcing and record a fallback note. With the current construction forcing is always feasible, so this is defensive; the test simulates it.
 - **Refs:** ARCH §5.7; PRD FR-14, NFR-7; T5.5
 
+### D-045 · Explanations and shadow prices · 2026-09-29 · accepted
+- **Decision:** pure LPs use their own duals. For the MILP, the LP relaxation fixes co-man activation binaries at their optimum but relaxes spend segment-order binaries to [0, 1]. Fixing the latter would also freeze which spend segments are open and zero the budget's marginal value; relaxed, the spend block is the standard concave PWL LP whose duals are exact whenever extra lift has positive value. Integrality is restored afterwards. Verified against hand-derived values: shortage capacity dual = marginal line value (₹1,500 + 0.3 × ₹375); surplus capacity = −waste cost; binding budget = next segment's slope × (price + waste avoided) − 1. The binding list covers only real limits (capacity, carryover, floors, concentration, budget, exploration, spend holds, co-man ceilings); demand equalities stay in `duals`. Per-line drivers carry stable codes: `fully_served`, `capacity_bound`, `at_service_floor`, `floor_violated`, `concentration_cap`, `ineligible`, `held_at_plan`, `evidence_gate`, `budget_binding`, `extrapolation_cap`, `marginal_value`.
+- **Refs:** ARCH §5.7; PRD NFR-7; T5.6
+
 ---
 
 ## 2. Assumptions register
@@ -683,6 +687,15 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Files touched:** `backend/dce/optimize/{lp,spend,plan,diagnostics}.py`, `backend/dce/tests/test_optimize_diagnostics.py`
 - **Tests:** 5 added / 222 passing (clean plan → no diagnostics; floor violation reported with amount and account; 30% budget cut below held plans is soft and the violation equals the cut; forced-co-man infeasibility fallback; non-optimal status diagnosed)
 - **Decisions made:** D-044
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** none
+
+### TL-029 · T5.6 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.optimize.explain`: `relaxed_duals`, `binding_constraints` (plain-language meaning per constraint), `line_drivers` (coded reasons for every D2C/B2B allocation line and spend line), `explain(result)` → `Explanation`.
+- **Files touched:** `backend/dce/optimize/explain.py`, `backend/dce/tests/test_optimize_explain.py`
+- **Tests:** 5 added / 227 passing (shortage shadow price = hand value and drivers; surplus capacity = −waste cost; MILP budget dual via relaxation = next-segment value, integrality restored; capped region explained, budget worth ₹0; every line has coded reasons)
+- **Decisions made:** D-045
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** none
 
