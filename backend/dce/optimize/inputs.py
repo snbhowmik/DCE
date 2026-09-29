@@ -112,8 +112,10 @@ class PlanInputs:
 
     def with_capacity(self, cap_in: np.ndarray) -> PlanInputs:
         """Copy with different capacity (carry limit scales with it)."""
-        ratio = np.divide(cap_in, self.cap_in, out=np.ones_like(cap_in), where=self.cap_in > 0)
-        return replace(self, cap_in=np.asarray(cap_in, float), carry_limit=self.carry_limit * ratio)
+        cap_in = np.asarray(cap_in, float)
+        ok = self.cap_in > 1e-9  # a (near-)zero old capacity gives no scale to carry over
+        ratio = np.divide(cap_in, self.cap_in, out=np.ones_like(cap_in), where=ok)
+        return replace(self, cap_in=cap_in, carry_limit=self.carry_limit * ratio)
 
 
 def monthly_quantile(

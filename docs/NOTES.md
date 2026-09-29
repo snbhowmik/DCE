@@ -356,6 +356,12 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Observation (world_06, STABILITY, unblinded):** the optimizer activated co-man because it plans at P15 capacity; on average that output was surplus, costing ₹2.2M of contribution vs the baselines at equal B2B fill. That is the configured posture (insurance), recorded for T11; not tuned here (tuning needs TN entries and training-window evidence).
 - **Refs:** ARCH §5.7; PRD FR-19, §9; T5.8
 
+### D-048 · Monotonicity invariant restated; stress contribution no longer double-counts waste · 2026-09-29 · accepted (supersedes the contribution definition in D-046)
+- **Context:** ARCH §9.9 says "increasing capacity never lowers the optimal objective". With the waste term −h·waste in the objective, extra capacity in surplus is wasted and the objective *falls* by h per kg. Since −h·waste = −h·cap + h·used, the term shifts the objective by a constant per kg of capacity without changing any decision. The same analysis showed the stress-test contribution charged in-house production cost on every produced kg **and** waste cost on wasted kg, counting wasted kg twice and biasing comparisons against plans that produce surplus (e.g. STABILITY's co-man insurance in the D-047 observation).
+- **Decision:** the invariant is tested as *objective + h·Σcap is non-decreasing in capacity* (200 random instances). Stress contribution = revenue − B2B penalties − co-man cost − spend − in-house production cost; waste is reported in kg only. `PlanInputs.with_capacity` guards near-zero old capacities (hypothesis found a subnormal capacity turning the carry limit into NaN).
+- **Consequences:** the D-047 world_06 observation overstated STABILITY's contribution gap by the double-counted waste cost; T11 will use the corrected metric.
+- **Refs:** ARCH §9.9; D-046, D-047; T5.9
+
 ---
 
 ## 2. Assumptions register
@@ -727,4 +733,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-047
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** co-man cost is charged on requested volume; switch to delivered volume if contracts bill on delivery (open question for Q-003).
+
+### TL-032 · T5.9 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** hypothesis property tests (200 derandomized examples each): capacity/demand/eligibility/carry bounds (ARCH §9.1–2), floors hold when month-wise feasible and every slack is reported (§9.3), monotonicity in capacity (§9.9, restated per D-048), stress never serves more than supply or demand on any path (§9.1). §9.8 (zero-volume onboarding = baseline) belongs to T7.1. Fixes: `with_capacity` near-zero guard; stress contribution double count.
+- **Files touched:** `backend/dce/tests/test_optimize_properties.py`, `backend/dce/optimize/{inputs,stress}.py`
+- **Tests:** 4 property tests (800 instances) / 241 passing
+- **Decisions made:** D-048
+- **Deviations from ARCH:** §9.9 restated (D-048)
+- **Known issues / follow-ups:** none
 

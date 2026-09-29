@@ -263,11 +263,10 @@ def stress_test(
     coman_cost = 0.0
     if len(decision.coman_q):
         coman_cost = float((decision.coman_q * decision.coman_cost[:, None]).sum())
-    waste_cost = waste.sum(axis=1) * inp.waste_cost
+    # Production cost already covers every in-house kg, wasted or not; charging waste cost on
+    # top would count wasted kg twice (waste is reported in kg instead).
     production_cost = unit_cost * scen.inhouse.sum(axis=1)
-    contribution = (
-        rev_d2c + rev_b2b - penalty - waste_cost - coman_cost - decision.spend - production_cost
-    )
+    contribution = rev_d2c + rev_b2b - penalty - coman_cost - decision.spend - production_cost
     shortfall = (short_b2b > 1e-3 * np.maximum(b2b_dem, 1.0)).any(axis=(0, 2))
     metrics = {
         "revenue_inr": rev_d2c + rev_b2b,

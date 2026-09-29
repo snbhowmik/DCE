@@ -132,7 +132,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 - [x] **T5.6 Explanations** (binding constraints, shadow prices via LP relaxation, top drivers per line). *Depends:* T5.5
 - [x] **T5.7 Monte Carlo stress test.** *Depends:* T5.5
 - [x] **T5.8 Rule baselines** (proportional, B2B-first, FCFS) through the same stress test. *Depends:* T5.7
-- [ ] **T5.9 Invariant + property tests**
+- [x] **T5.9 Invariant + property tests**
   *Refs:* ARCH §9 items 1–3, 8, 9
   *Accept:* hypothesis-based tests pass for 200 random small instances.
   *Depends:* T5.8
