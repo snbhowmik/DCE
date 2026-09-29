@@ -19,6 +19,7 @@ import polars as pl
 
 from dce.forecast.covariates import build_covariates
 from dce.forecast.pipeline import ForecastConfig, ForecastSet, run_forecast
+from dce.numerics import SUM_DECIMALS
 
 WEEKS_PER_MONTH = 52 / 12
 
@@ -64,7 +65,7 @@ def ratio_series(
     weekly = (
         demand.filter(pl.col("channel") == "B2B")
         .group_by("account_id", "week_start")
-        .agg(pl.col("demand_kg").sum(), pl.col("is_censored").any())
+        .agg(pl.col("demand_kg").sum().round(SUM_DECIMALS), pl.col("is_censored").any())
     )
     grid = acc.select(
         "account_id",
@@ -94,7 +95,7 @@ def ratio_distribution(ratios: pl.DataFrame) -> pl.DataFrame:
         ratios.with_columns(pl.col("week_start").dt.truncate("1mo").alias("m"))
         .group_by("account_id", "m")
         .agg(
-            pl.col("demand_kg").sum(),
+            pl.col("demand_kg").sum().round(SUM_DECIMALS),
             (pl.col("weekly_commit_kg").first() * pl.len()).alias("commit"),
         )
         .with_columns((pl.col("demand_kg") / pl.col("commit")).alias("mratio"))

@@ -298,6 +298,12 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decision:** `dce.strategy.models.ModeConfig` (pydantic, closed schema): quantiles in (0, 1), weights ≥ 0 over exactly {rev, pen, gw, spend, reach, cust}, floor/shares in [0, 1], `res_gate` in [−5, 5] (z units), optional `q_demand_d2c` (default 0.5), `onboarding_aqs_weights` cross-checked against `scoring.yaml` profiles, `onboarding_policy` ∈ {normal, paused_unless_exceptional}. CUSTOM = the YAML `CUSTOM` base plus user overrides (weights merged key-wise), re-validated; overrides on named modes are refused so a "GROWTH" run always means the configured GROWTH. `build_run_config` validates the mode; `mode_config` in the run record is the validated dump.
 - **Refs:** IDEATION §8; ARCH §7; PRD FR-15; T5.2
 
+### D-037 · Order-independent float aggregation · 2026-09-29 · accepted
+- **Context:** the full suite failed intermittently (response-model hash differed across identical runs). Root cause: polars' parallel `group_by().sum()` adds floats in a scheduling-dependent order, so a weekly spend total came out as 10487.29 or 10487.289999999999 (1.8e-12 apart); the response fit's finite-difference gradients amplified that into ~1e-6 relative drift in bootstrap CIs. Reproduced by churning the allocator between runs.
+- **Decision:** every float aggregation that feeds a model is rounded to 6 decimals (`dce.numerics.SUM_DECIMALS`), which is far below any meaningful precision for ₹ or kg. Applied in demand reconstruction, B2B ratios, covariates, response inputs, capacity plan, funnel, cohorts, RES, AQS.
+- **Consequences:** a regression test repeats the aggregations 40× under allocator churn and requires bit-identical output. New aggregations must use the same rounding.
+- **Refs:** PRD NFR-2; T4.1, T5.2
+
 ---
 
 ## 2. Assumptions register
@@ -361,7 +367,10 @@ Every task completion, design decision, assumption, contract change, integrity e
 
 ## 5. Integrity events
 
-*(none yet)*
+### IE-001 · 2026-09-29
+- **What happened:** the DGP handoff summary (Gemini CLI output), pasted into the app session by the project owner, contained the sealed world table: the internal config name, seed, and a regime description (with event weeks) for every public world ID, plus the sealed-file hashes. The app agent (Claude Code) read it before any world was ingested. No DGP code, parameters, or files were opened by the app side.
+- **Worlds affected:** world_01 … world_06 and world_01_drop2 (all delivered worlds). The regime details are deliberately not reproduced in this repo.
+- **Action:** per IDEATION §11 rule 5, these worlds cannot back a *blind* headline result. Pending owner decision (see TL entry of the same date): regenerate a fresh blind set with new seeds, a private reshuffle, and ideally configs the app side has not seen; the current worlds may still be used for integration and non-headline testing, clearly labeled as unblinded.
 
 ## 6. Tuning notes
 
@@ -581,4 +590,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-036
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** none
+
+### TL-024 · fix (NFR-2) · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** fixed intermittent nondeterminism from parallel float sums (D-037). Note: the T5.2 commit (087bb73) went in on a run where this flaky test failed; the chained command did not gate on the test exit code. Commits are now gated on `make test`.
+- **Files touched:** `backend/dce/numerics.py`, 9 aggregation modules, `backend/dce/tests/test_determinism.py`
+- **Tests:** 1 added / 197 passing
+- **Decisions made:** D-037
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** IE-001 logged the same day (worlds unblinded before ingest).
 

@@ -13,6 +13,8 @@ from datetime import date, timedelta
 
 import polars as pl
 
+from dce.numerics import SUM_DECIMALS
+
 CENSORING_STATUSES = ("waitlisted", "cancelled_stockout")
 EXCLUDED_STATUSES = ("cancelled_other",)
 SERIES_KEYS = ("channel", "region_id", "sku_id", "account_id")
@@ -67,19 +69,22 @@ def weekly_demand(orders: pl.DataFrame, last_week: date) -> pl.DataFrame:
     )
     needed = ~pl.col("status").is_in(EXCLUDED_STATUSES)
     agg = o.group_by([*SERIES_KEYS, "week_start"]).agg(
-        pl.col("requested_qty_kg").filter(needed).sum().alias("demand_kg"),
-        pl.col("fulfilled_qty_kg").filter(needed).sum().alias("sales_kg"),
+        pl.col("requested_qty_kg").filter(needed).sum().round(SUM_DECIMALS).alias("demand_kg"),
+        pl.col("fulfilled_qty_kg").filter(needed).sum().round(SUM_DECIMALS).alias("sales_kg"),
         pl.col("requested_qty_kg")
         .filter(pl.col("status").is_in(CENSORING_STATUSES))
         .sum()
+        .round(SUM_DECIMALS)
         .alias("censored_kg"),
         (pl.col("requested_qty_kg") - pl.col("fulfilled_qty_kg"))
         .filter(pl.col("status") == "partial")
         .sum()
+        .round(SUM_DECIMALS)
         .alias("partial_short_kg"),
         pl.col("requested_qty_kg")
         .filter(pl.col("status").is_in(EXCLUDED_STATUSES))
         .sum()
+        .round(SUM_DECIMALS)
         .alias("cancelled_other_kg"),
         needed.sum().cast(pl.UInt32).alias("n_orders"),
     )
@@ -118,7 +123,7 @@ def channel_totals(demand: pl.DataFrame) -> pl.DataFrame:
     return (
         demand.group_by("channel", "week_start")
         .agg(
-            pl.col("demand_kg", "sales_kg", "unmet_kg", "censored_kg").sum(),
+            pl.col("demand_kg", "sales_kg", "unmet_kg", "censored_kg").sum().round(SUM_DECIMALS),
             pl.col("is_censored").any(),
         )
         .sort("channel", "week_start")

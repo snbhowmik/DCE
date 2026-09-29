@@ -18,6 +18,8 @@ from typing import Any
 import numpy as np
 import polars as pl
 
+from dce.numerics import SUM_DECIMALS
+
 POSITIVE = ("volume", "stability", "reach", "margin", "reliability")
 PRIOR_COMPONENTS = ("stability", "reliability", "margin", "penalty")
 AVG_WEEKS_PER_MONTH = 52 / 12
@@ -62,7 +64,7 @@ def monthly_capacity_kg(capacity_plan: pl.DataFrame, last_week: date, weeks: int
             (pl.col("planned_batches") * pl.col("planned_yield_per_batch_kg")).alias("kg")
         )
         .group_by("week_start")
-        .agg(pl.col("kg").sum())["kg"]
+        .agg(pl.col("kg").sum().round(SUM_DECIMALS))["kg"]
         .mean()
     )
     return float(weekly) * AVG_WEEKS_PER_MONTH  # type: ignore[arg-type]
@@ -86,7 +88,10 @@ def _history_components(
     monthly = (
         o.with_columns(pl.col("order_date").dt.truncate("1mo").alias("m"))
         .group_by("account_id", "m")
-        .agg(pl.col("requested_qty_kg").sum().alias("kg"), pl.col("committed_kg_per_month").first())
+        .agg(
+            pl.col("requested_qty_kg").sum().round(SUM_DECIMALS).alias("kg"),
+            pl.col("committed_kg_per_month").first(),
+        )
         .with_columns((pl.col("kg") / pl.col("committed_kg_per_month")).alias("ratio"))
     )
     stab = monthly.group_by("account_id").agg(

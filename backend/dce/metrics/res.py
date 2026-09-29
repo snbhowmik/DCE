@@ -20,6 +20,8 @@ from typing import Any
 import numpy as np
 import polars as pl
 
+from dce.numerics import SUM_DECIMALS
+
 COMPONENTS = ("lift", "econ", "retention", "nps")
 
 
@@ -133,10 +135,10 @@ def lift_components(
     wk_spend = (
         marketing_daily.with_columns(pl.col("date").dt.truncate("1w").alias("week_start"))
         .group_by("region_id", "channel", "week_start")
-        .agg(pl.col("spend_inr").sum().alias("spend"))
+        .agg(pl.col("spend_inr").sum().round(SUM_DECIMALS).alias("spend"))
     )
     wk_demand = demand.group_by("region_id", "channel", "week_start").agg(
-        pl.col("demand_kg").sum().alias("demand")
+        pl.col("demand_kg").sum().round(SUM_DECIMALS).alias("demand")
     )
     rows = []
     for (region, channel), g in wk_demand.group_by(["region_id", "channel"], maintain_order=True):
@@ -183,7 +185,7 @@ def response_evidence(
     fm = funnel_monthly.filter(pl.col("period_start") >= month0).sort("period_start")
 
     agg = fm.group_by("region_id", "channel").agg(
-        pl.col("spend_inr").sum().alias("spend"),
+        pl.col("spend_inr").sum().round(SUM_DECIMALS).alias("spend"),
         pl.col("new_customers").sum().alias("new_customers"),
         pl.col("customers_lost").sum().alias("lost"),
         pl.col("customers_at_start").sum().alias("at_start"),

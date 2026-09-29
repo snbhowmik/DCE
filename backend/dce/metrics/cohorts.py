@@ -20,6 +20,7 @@ from typing import Any
 import polars as pl
 
 from dce.metrics.funnel import safe_div
+from dce.numerics import SUM_DECIMALS
 
 
 @dataclass(frozen=True)
@@ -96,7 +97,7 @@ def cohort_table(tables: dict[str, pl.DataFrame], last_complete_month: date) -> 
         )
         .filter(pl.col("age").is_between(0, last_idx - pl.col("acq_idx")))
         .group_by("region_id", "cohort_month", "age")
-        .agg(pl.col("m").sum().alias("margin_inr"))
+        .agg(pl.col("m").sum().round(SUM_DECIMALS).alias("margin_inr"))
     )
     return (
         ages.drop("acq_idx")
@@ -118,8 +119,8 @@ def cohort_ltv(cohorts: pl.DataFrame, cfg: LtvConfig | None = None) -> pl.DataFr
     g = cohorts.group_by("region_id", "cohort_month").agg(
         pl.col("n").first(),
         pl.col("age").max().alias("age_months"),
-        pl.col("margin_inr").sum().alias("margin_total"),
-        pl.col("margin_inr").filter(in_window).sum().alias("w_margin"),
+        pl.col("margin_inr").sum().round(SUM_DECIMALS).alias("margin_total"),
+        pl.col("margin_inr").filter(in_window).sum().round(SUM_DECIMALS).alias("w_margin"),
         pl.col("alive").filter(in_window).sum().alias("w_alive"),
         pl.col("lost").filter(in_window).sum().alias("w_lost"),
         (pl.col("alive") - pl.col("lost")).sort_by("age").last().alias("alive_now"),

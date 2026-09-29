@@ -19,6 +19,7 @@ import numpy as np
 import polars as pl
 from scipy.stats import beta as beta_dist
 
+from dce.numerics import SUM_DECIMALS
 from dce.seeds import rng as seeded_rng
 
 Alignment = Literal["start", "end"]
@@ -155,7 +156,9 @@ def planned_batches(
         .agg(
             pl.col("planned_batches").sum(),
             (
-                (pl.col("planned_batches") * pl.col("planned_yield_per_batch_kg")).sum()
+                (pl.col("planned_batches") * pl.col("planned_yield_per_batch_kg"))
+                .sum()
+                .round(SUM_DECIMALS)
                 / pl.col("planned_batches").sum()
             ).alias("planned_yield_per_batch_kg"),
         )

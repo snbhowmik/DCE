@@ -12,6 +12,7 @@ from datetime import date
 import polars as pl
 
 from dce.forecast.calendar import weekly_holidays
+from dce.numerics import SUM_DECIMALS
 
 KNOWN_SOURCES = ("marketing_plan", "regions", "skus", "b2b_accounts")
 
@@ -34,7 +35,7 @@ def build_covariates(
     plan = (
         tables["marketing_plan"]
         .group_by("week_start", "region_id", "channel")
-        .agg(pl.col("planned_spend_inr").sum())
+        .agg(pl.col("planned_spend_inr").sum().round(SUM_DECIMALS))
     )
     tier = tables["regions"].select("region_id", "tier")
     list_price = tables["skus"].select("sku_id", pl.col("list_price_d2c_inr_per_kg").alias("lp"))

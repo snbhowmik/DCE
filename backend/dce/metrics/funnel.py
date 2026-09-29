@@ -11,6 +11,8 @@ from typing import Literal
 
 import polars as pl
 
+from dce.numerics import SUM_DECIMALS
+
 Grain = Literal["week", "month"]
 _TRUNC = {"week": "1w", "month": "1mo"}
 KEYS = ("region_id", "channel", "period_start")
@@ -60,7 +62,9 @@ def _marketing(mkt: pl.DataFrame, grain: Grain) -> pl.DataFrame:
                 "qualified_leads",
                 "conversions",
                 "attributed_revenue_inr",
-            ).sum()
+            )
+            .sum()
+            .round(SUM_DECIMALS)
         )
     )
 
@@ -73,13 +77,17 @@ def _orders(orders: pl.DataFrame, skus: pl.DataFrame, grain: Grain) -> pl.DataFr
         .group_by(KEYS)
         .agg(
             served.sum().cast(pl.Int64).alias("n_orders"),
-            pl.col("fulfilled_qty_kg").sum().alias("fulfilled_kg"),
-            (pl.col("fulfilled_qty_kg") * pl.col("unit_price_inr")).sum().alias("revenue_inr"),
+            pl.col("fulfilled_qty_kg").sum().round(SUM_DECIMALS).alias("fulfilled_kg"),
+            (pl.col("fulfilled_qty_kg") * pl.col("unit_price_inr"))
+            .sum()
+            .round(SUM_DECIMALS)
+            .alias("revenue_inr"),
             (
                 pl.col("fulfilled_qty_kg")
                 * (pl.col("unit_price_inr") - pl.col("unit_cost_inr_per_kg"))
             )
             .sum()
+            .round(SUM_DECIMALS)
             .alias("gross_margin_inr"),
             pl.coalesce("customer_id", "account_id")
             .filter(served)
@@ -200,6 +208,7 @@ def _b2b_flows(
             (pl.col("committed_kg_per_month") * pl.col("contract_price_inr_per_kg"))
             .filter(live)
             .sum()
+            .round(SUM_DECIMALS)
             .alias("b2b_contract_mrr_inr"),
             (monthly_margin * tenure_months).filter(live).mean().alias("b2b_ltv_inr"),
         )
@@ -230,6 +239,7 @@ def _subscriber_revenue(
         .agg(
             (pl.col("fulfilled_qty_kg") * pl.col("unit_price_inr"))
             .sum()
+            .round(SUM_DECIMALS)
             .alias("d2c_subscription_revenue_inr")
         )
         .with_columns(pl.lit("D2C").alias("channel"))

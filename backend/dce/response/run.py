@@ -13,6 +13,7 @@ import polars as pl
 from dce.demand.reconstruct import weekly_demand
 from dce.forecast.anomaly import AnomalyConfig, detect_anomalies
 from dce.hashing import canonical_json
+from dce.numerics import SUM_DECIMALS
 from dce.response.fit import ResponseConfig, ResponseFit, fit_region
 
 
@@ -42,7 +43,7 @@ def weekly_region_inputs(
         weekly_demand(tables["orders"], last)
         .filter(pl.col("channel") == "D2C")
         .group_by("region_id", "week_start")
-        .agg(pl.col("demand_kg").sum().alias("y"), pl.col("is_censored").any())
+        .agg(pl.col("demand_kg").sum().round(SUM_DECIMALS).alias("y"), pl.col("is_censored").any())
         .with_columns(
             pl.concat_str([pl.lit("D2C"), pl.col("region_id")], separator="|").alias("series_id"),
             pl.lit("D2C").alias("channel"),
@@ -56,7 +57,7 @@ def weekly_region_inputs(
         .filter(pl.col("channel") == "D2C")
         .with_columns(pl.col("date").dt.truncate("1w").alias("week_start"))
         .group_by("region_id", "week_start")
-        .agg(pl.col("spend_inr").sum().alias("spend"))
+        .agg(pl.col("spend_inr").sum().round(SUM_DECIMALS).alias("spend"))
     )
     return (
         clean.filter(pl.col("week_start").is_between(first, last))
