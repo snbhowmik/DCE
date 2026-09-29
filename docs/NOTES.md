@@ -628,8 +628,6 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** IE-001 logged the same day (worlds unblinded before ingest).
 
-
-
 ### TL-025 · DGP integration · 2026-09-29
 - **Agent/author:** Claude Code
 - **Summary:** ingested all 7 delivered drops (world_01–06 + world_01_drop2; 0 errors after CC-002). End-to-end run on world_01 (156 weeks, 217k orders): forecast 34 s, response 10 s, capacity + LP < 1 s (≈44 s total, inside NFR-1). Fixed: manifest names (CC-002); rolling B2B renewals (D-038); planning scope + SKU-mix price (D-039); response identification guards + spend/plan ingest check (D-040). Wrote `contract/DGP_FEEDBACK.md` for the DGP side (CC-003, DQ-001, handoff hygiene).
