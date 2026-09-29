@@ -13,10 +13,17 @@ paths:
   reports: reports
   db: data/processed/dce.sqlite
 llm:
-  provider: anthropic
-  model: claude-sonnet-5
-  timeout_s: 60
+  # D-049/D-050/D-053: OpenAI-compatible endpoint (Groq free tier by default) or `none`.
+  # The key is read from the env var named below, or from the repo's gitignored .env file.
+  # With no key the template brief is used; nothing else changes.
+  provider: openai_compatible        # none | openai_compatible
+  base_url: https://api.groq.com/openai/v1
+  model: llama-3.1-8b-instant        # any chat model id the endpoint serves
+  api_key_env: GROQ_API_KEY
+  timeout_s: 30
   max_retries: 2
+  max_output_tokens: 450
+  temperature: 0.2
 forecast:
   quantiles: [0.1, 0.5, 0.9]
   backtest:

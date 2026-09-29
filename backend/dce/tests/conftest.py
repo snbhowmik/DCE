@@ -47,3 +47,11 @@ def load_dataset_at(processed: Path) -> dict[str, pl.DataFrame]:
         return load_dataset(processed.name)
     finally:
         mp.undo()
+
+
+@pytest.fixture(autouse=True)
+def _no_llm_network(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests never call a real LLM (D-049): a developer's .env key is invisible to the suite."""
+    from dce.ai import llm
+
+    monkeypatch.setattr(llm, "env_value", lambda key: None)
