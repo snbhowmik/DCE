@@ -22,6 +22,9 @@ dependencies = [
     "highspy>=1.7",
     "pulp>=2.9,<3",
     "joblib>=1.6.0",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "httpx>=0.27",
 ]
 
 [project.scripts]
@@ -57,6 +60,9 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
 ignore = ["RUF001", "RUF002", "RUF003"]  # allow ₹, ×, – in strings/comments
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "typer.Option", "typer.Argument"]
 
 [tool.ruff.lint.per-file-ignores]
 "dce/tests/*" = ["E501"]  # inline fixture tables

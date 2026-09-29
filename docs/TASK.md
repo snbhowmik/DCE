@@ -153,15 +153,15 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 
 ## Phase 8 — API
 
-- [ ] **T8.1 FastAPI app + endpoints** per ARCH §6, with pydantic schemas and OpenAPI.
-- [ ] **T8.2 Background run execution** (simple in-process task queue; status polling).
-- [ ] **T8.3 API tests** (httpx; happy path + error mapping).
+- [~] **T8.1 FastAPI app + endpoints** per ARCH §6, with pydantic schemas and OpenAPI.
+- [x] **T8.2 Background run execution** (simple in-process task queue; status polling).
+- [~] **T8.3 API tests** (httpx; happy path + error mapping).
   *Depends:* T6.3, T7.1
 
 ## Phase 9 — AI layer
 
-- [ ] **T9.1 `LLMClient` + OpenAI-compatible implementation (small/offline models; `provider: none`) per D-049** (env key, model from config, timeout/retry, prompt + response logging with secrets redacted).
-- [ ] **T9.2 Narrative + NumberGroundingValidator + template fallback**
+- [x] **T9.1 `LLMClient` + OpenAI-compatible implementation (small/offline models; `provider: none`) per D-049** (env key, model from config, timeout/retry, prompt + response logging with secrets redacted).
+- [x] **T9.2 Narrative + NumberGroundingValidator + template fallback**
   *Accept:* validator test with an injected fake number → rejected; fallback template renders.
 - [ ] **T9.3 Scenario parser + executor + diff**
   *Accept:* 15 example prompts (in `tests/scenarios.yaml`) parse into correct specs; unsupported requests return `unsupported`.

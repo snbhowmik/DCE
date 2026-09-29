@@ -1,0 +1,104 @@
+"""T8.1–T8.3 (subset, D-051): API over persisted runs, background runs, decision log."""
+
+from __future__ import annotations
+
+import time
+from collections.abc import Iterator
+from typing import Any
+
+import pytest
+from fastapi.testclient import TestClient
+
+from dce.api import app as api
+from dce.tests.test_payload import runs  # noqa: F401  (module fixture: two runs on tiny_world)
+
+
+@pytest.fixture(scope="module")
+def client(runs: tuple[Any, list[Any]]) -> Iterator[TestClient]:  # noqa: F811
+    engine, _ = runs
+    api.app.dependency_overrides[api.get_engine] = lambda: engine
+    yield TestClient(api.app)
+    api.app.dependency_overrides.clear()
+
+
+def test_datasets_and_runs(client: TestClient, runs: tuple[Any, list[Any]]) -> None:  # noqa: F811
+    ds = client.get("/api/v1/datasets").json()
+    assert [d["world_id"] for d in ds] == ["tiny_world"]
+    assert {r["mode"] for r in ds[0]["runs"]} == {"STABILITY", "GROWTH"}
+    rows = client.get("/api/v1/runs", params={"world": "tiny_world", "mode": "GROWTH"}).json()
+    assert [r["run_id"] for r in rows] == [runs[1][1].run_id]
+
+
+def test_run_payload_and_sections(client: TestClient, runs: tuple[Any, list[Any]]) -> None:  # noqa: F811
+    rid = runs[1][0].run_id
+    full = client.get(f"/api/v1/runs/{rid}").json()
+    assert full["run"]["run_id"] == rid
+    sec = client.get(f"/api/v1/runs/{rid}/risk").json()
+    assert sec["run_id"] == rid and sec["dataset_hash"] and "alerts" in sec["risk"]
+    assert client.get(f"/api/v1/runs/{rid}/nope").status_code == 404
+    assert client.get("/api/v1/runs/run_missing").status_code == 404
+
+
+def test_narrative_without_llm_is_template(
+    client: TestClient,
+    runs: tuple[Any, list[Any]],  # noqa: F811
+) -> None:
+    n = client.get(f"/api/v1/runs/{runs[1][0].run_id}/narrative").json()
+    assert n["source"] == "template" and n["headline"] and n["facts"]
+
+
+def test_compare_modes(client: TestClient) -> None:
+    c = client.get("/api/v1/compare", params={"world": "tiny_world"}).json()
+    assert [m["mode"] for m in c["modes"]] == ["STABILITY", "GROWTH"]
+    assert all(m["kpis"] and m["allocation"] for m in c["modes"])
+    assert client.get("/api/v1/compare", params={"world": "nope"}).status_code == 404
+
+
+def test_decision_log_roundtrip_and_validation(
+    client: TestClient,
+    runs: tuple[Any, list[Any]],  # noqa: F811
+) -> None:
+    rid = runs[1][0].run_id
+    body = {
+        "run_id": rid,
+        "kind": "coman",
+        "key": "coman:X:1",
+        "summary": "activate co-man",
+        "action": "reject",
+        "reason": "partner cannot start before February",
+    }
+    assert client.post("/api/v1/decisions", json=body).status_code == 201
+    assert client.post("/api/v1/decisions", json=body | {"action": "accept"}).status_code == 201
+    rows = client.get("/api/v1/decisions", params={"run_id": rid}).json()
+    assert [r["action"] for r in rows] == ["accept", "reject"]
+    assert rows[0]["rec_id"] == f"{rid}:coman:coman:X:1"
+    assert client.post("/api/v1/decisions", json=body | {"action": "maybe"}).status_code == 422
+    assert client.post("/api/v1/decisions", json=body | {"reason": ""}).status_code == 422
+    assert client.post("/api/v1/decisions", json=body | {"run_id": "run_x"}).status_code == 404
+
+
+def test_background_run_errors(client: TestClient) -> None:
+    assert client.post("/api/v1/runs", json={"world_id": "nope"}).status_code == 404
+    r = client.post("/api/v1/runs", json={"world_id": "tiny_world", "modes": ["WHATEVER"]})
+    assert r.status_code == 422
+    assert client.get("/api/v1/jobs/job_9999").status_code == 404
+
+
+def test_background_run_completes(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Job lifecycle with the pipeline stubbed (the real run is covered by test_payload)."""
+    from dce import service
+
+    def fake_run_modes(
+        engine: Any, world: str, modes: list[str], seed: Any, on_start: Any
+    ) -> list[Any]:
+        on_start("run_fake", modes[0])
+        return [service.RunRecord("run_fake", world, modes[0], "succeeded", None)]
+
+    monkeypatch.setattr(service, "run_modes", fake_run_modes)
+    job = client.post("/api/v1/runs", json={"world_id": "tiny_world", "modes": ["GROWTH"]}).json()
+    for _ in range(50):
+        st = client.get(f"/api/v1/jobs/{job['job_id']}").json()
+        if st["status"] in ("succeeded", "failed"):
+            break
+        time.sleep(0.05)
+    assert st["status"] == "succeeded" and st["runs"][0]["run_id"] == "run_fake"

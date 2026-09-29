@@ -387,6 +387,12 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Consequences:** a plan that buys co-man can raise surplus alerts, which is the intended signal (world_06 STABILITY, unblinded: surplus alert from week 4, ≈5.8 t expected). T6.3 mitigations will re-run `assess` with the lever applied.
 - **Refs:** ARCH §5.8; PRD FR-22, FR-25; A-003; T6.1
 
+### D-053 · Groq free tier as the configured LLM endpoint; template fallback everywhere · 2026-09-29 · accepted (refines D-050's default)
+- **Context:** the owner has a Groq free-tier key. Groq serves an OpenAI-compatible API, so it fits D-049 with no vendor code.
+- **Decision:** `llm.provider: openai_compatible`, `base_url: https://api.groq.com/openai/v1`, `model: llama-3.1-8b-instant`, key from `GROQ_API_KEY` (env or the gitignored `.env`). With no key the client is `None` and the template brief is served, exactly as `provider: none`. Free-tier budget: briefs are cached per run (`narrative.json`) and regenerated only when the model or prompt version changes or the last failure was transient (HTTP 429, network), so each run costs one call, two on a grounding retry. HTTP 400/401/403/404 are not retried. Exchanges (prompt, response) are stored with the brief for audit; request headers and the key never are. The test suite blanks the key (autouse fixture), so CI never calls the network.
+- **Consequences:** swapping to Ollama / llama.cpp / another host is a config change (`base_url`, `model`, `api_key_env`).
+- **Refs:** D-049, D-050; ARCH §5.11, §8; PRD FR-26–29, NFR-6; T9.1, T9.2
+
 ---
 
 ## 2. Assumptions register
@@ -785,4 +791,22 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** none (D-051)
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** CAC and CPL are `null` (not ₹0) where realized spend is zero (DQ-001), so the 12-month funnel is mostly empty on the delivered worlds; the Markets screen also shows whole-history funnels. world_06 all three modes: 28.8 s.
+
+### TL-035 · T9.1 + T9.2 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.ai.llm` (`LLMClient` protocol, `OpenAICompatibleClient` over httpx with timeout, retry and 429 handling, `make_client`, `.env` reader, key hidden from repr); `dce.ai.grounding.NumberGroundingValidator` (₹ Cr/L, t/kg, %, ISO dates, display-precision tolerance, identifiers skipped, derived numbers rejected); `dce.ai.narrative` (compact digest of about 15 formatted facts, plain-text HEADLINE/FINDINGS/ACTIONS format for small models, one retry listing violations, deterministic template fallback, per-run cache). Groq configured in `config/app.yaml`; `.env.example` updated.
+- **Files touched:** `backend/dce/ai/{llm,grounding,narrative}.py`, `config/app.yaml`, `.env.example`, `backend/dce/tests/{test_ai_narrative,conftest}.py`
+- **Tests:** 12 added (injected fake number rejected; derived "2.2×" rejected; display formats accepted; digest and template grounded; LLM brief used when grounded; retry then success; two failures → template; unavailable → template, transient; unparseable → template; client needs provider + key; request shape + 429 retry via mock transport; 401 not retried; cache reuse and refresh). The template brief and digest were also checked against all 27 stored world payloads: 0 violations.
+- **Decisions made:** D-053
+- **Deviations from ARCH:** §5.11's Anthropic client and JSON structured output replaced per D-049/D-050/D-053
+- **Known issues / follow-ups:** live Groq output not yet exercised (key not yet in `.env`). T9.3 (scenario parser) still to do.
+
+### TL-036 · T8.1 (partial) + T8.2 + T8.3 (partial) · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.api.app` (FastAPI): `/health`, `/datasets`, `/runs` (list latest per world × mode), `/runs/{id}` (payload), `/runs/{id}/{section}` incl. `narrative`, `/compare`, `POST /runs` (in-process single-worker queue) + `/jobs/{id}`, `GET/POST /decisions`. Error mapping: 404 unknown run/world/section/job, 422 invalid mode or decision. Not yet: `/datasets/ingest`, `/datasets/{hash}/health`, `/runs/{id}/scenarios`, `/onboarding/simulate`, `/metrics/*`, `/eval`.
+- **Files touched:** `backend/dce/api/app.py`, `backend/dce/tests/test_api.py`, `backend/pyproject.toml` (fastapi, uvicorn, httpx; bugbear immutable calls)
+- **Tests:** 7 added / 271 passing (datasets + runs; payload + sections + 404s; narrative without LLM = template; compare; decision log round trip + 422/404; background run errors; job lifecycle)
+- **Decisions made:** none (D-051)
+- **Deviations from ARCH:** `/compare` is a GET over stored runs instead of `POST /runs/compare`; `POST /runs` takes `world_id` + `modes`
+- **Known issues / follow-ups:** remaining endpoints land with T6.3, T7.1, T9.3
 
