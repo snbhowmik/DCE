@@ -319,6 +319,14 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decision:** two new `low_confidence` reasons: fewer than `response.min_spend_weeks` (26) weeks with non-zero spend, and any of θ, α, log κ within 1% of its search bound ("not identified"). New ingest warning `spend_plan_divergence` when > 10% of history weeks have planned D2C spend but zero realized spend.
 - **Refs:** ARCH §5.6; PRD FR-1; T4.1; DQ-001
 
+### D-041 · Spend co-optimization formulation; exact PWL via ordered-fill binaries · 2026-09-29 · accepted
+- **Context:** ARCH §5.6/§5.7 keep spend an LP because a concave response "stays valid when maximized". That holds only if extra lift is always worth something. When capacity is short, extra D2C demand becomes unmet demand with goodwill cost, lift has *negative* value, and the LP relaxation fills flat segments first (on world_01 it held spend at plan yet cut effective D2C demand from 3,949 to 2,383 kg).
+- **Options:** (A) keep the LP (wrong answers exactly when capacity binds, the case the product is for); (B) zero goodwill cost for spend-induced unmet demand (keeps the LP but hides the harm); (C) ordered-fill binaries per segment boundary (exact PWL, small MILP).
+- **Decision:** C. For each region-month, `sp[k] ≥ width_k·z_k` and `sp[k+1] ≤ width_{k+1}·z_k` (≤ (K−1)·R·M binaries: ~180 for 12 regions). Solve time on world_01 stays well under 1 s. Shadow prices (T5.6) come from the LP with binaries fixed at the optimum, as ARCH §5.7 already specifies for co-man.
+- **Also:** D2C demand = forecast − lift(plan) + lift(spend), with a monthly lag matrix from each region's θ (weekly geometric kernel; effects past the horizon are lost), so spend = plan reproduces the forecast. Budget B[m] = the modeled regions' planned total (× `optimize.budget_factor`, default 1): reallocation, not expansion of the total. Evidence gate (7): regions with RES < τ_mode *and* low-confidence regions may exceed plan only from the shared exploration pool ε·B[m]. Low-confidence regions are held at min(plan, cap). D2C_EXPANSION's customer term values extra spend at the region's LTV:CAC. B2B trade spend is not a lever in v1.
+- **Consequences:** deviation from ARCH §5.7's "MILP only with co-man". The regression test reproduces the gaming case.
+- **Refs:** ARCH §5.6, §5.7 constraints 2, 6, 7; D-006, D-008, D-033; T5.3
+
 ---
 
 ## 2. Assumptions register
@@ -636,4 +644,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-038, D-039, D-040; CC-002 accepted; CC-003 + DQ-001 raised
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** results on these worlds are unblinded (IE-001). Because of DQ-001, spend co-optimization (T5.3) will hold every region at plan on this set; spend features need regenerated worlds to be exercised.
+
+### TL-026 · T5.3 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.optimize.spend` (monthly lag matrix, `SpendInputs`, `add_spend`: segment variables with ordered-fill binaries, lift terms, budget, evidence gate + exploration pool, held-at-plan low-confidence regions, spend table) and `dce.optimize.plan` (`solve_plan` with extensions; `build_spend_inputs` from marketing plan, response fits, RES, LTV:CAC).
+- **Files touched:** `backend/dce/optimize/{spend,plan}.py`, `backend/dce/tests/test_optimize_spend.py`
+- **Tests:** 8 added / 209 passing (lag matrix; spend = plan ⇒ forecast; budget reallocates to the better region when capacity allows; budget never exceeded; gate limits expansion to the pool; low-confidence held at plan; spend cut when capacity is short; no segment gaming when held and short)
+- **Decisions made:** D-041
+- **Deviations from ARCH:** spend makes the model a MILP (D-041)
+- **Known issues / follow-ups:** on the delivered worlds every region is low-confidence (DQ-001), so spend stays at plan there.
 
