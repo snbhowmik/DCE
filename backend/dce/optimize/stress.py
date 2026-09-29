@@ -186,6 +186,18 @@ def _ration(
     return supply
 
 
+def _pro_rata(
+    order: list[Line], want: dict[Line, np.ndarray], got: dict[Line, np.ndarray], supply: np.ndarray
+) -> np.ndarray:
+    """Share supply across lines in proportion to their remaining want (order ignored)."""
+    need = {li: np.maximum(want[li] - got[li], 0.0) for li in order}
+    total = sum(need.values(), np.zeros_like(supply))
+    share = np.minimum(1.0, _ratio(supply, total))
+    for li in order:
+        got[li] += need[li] * share
+    return supply - total * share
+
+
 def _ratio(num: np.ndarray, den: np.ndarray) -> np.ndarray:
     return np.where(den > 0, num / np.maximum(den, 1e-12), 1.0)
 
@@ -197,8 +209,13 @@ def stress_test(
     weights: tuple[float, float, float],
     floor: float,
     unit_cost: float,
+    rationing: str = "priority",
 ) -> StressResult:
-    """Replay a fixed plan against every sampled future (vectorized over paths)."""
+    """Replay a fixed plan against every sampled future (vectorized over paths).
+
+    `rationing="pro_rata"` shares scarce supply in proportion to each line's remaining want
+    (no contract priority), used by the proportional and first-come-first-served baselines.
+    """
     R, A, M, P = len(inp.regions), len(inp.accounts), inp.M, scen.n_paths
     d2c_dem = np.maximum(scen.d2c + decision.d2c_shift[:, None, :], 0.0)  # [R, P, M]
     b2b_dem = scen.b2b  # [A, P, M]
@@ -229,8 +246,9 @@ def stress_test(
             got[li] += f * share
             supply = supply - f * share
         # 2. entitlements, then 3. surplus to remaining demand, both in priority order
-        supply = _ration(order, {li: np.minimum(dem[li], ent[li]) for li in lines}, got, supply)
-        supply = _ration(order, dem, got, supply)
+        split = _ration if rationing == "priority" else _pro_rata
+        supply = split(order, {li: np.minimum(dem[li], ent[li]) for li in lines}, got, supply)
+        supply = split(order, dem, got, supply)
         carry = np.minimum(supply, inp.carry_limit[m])
         waste[:, m] = supply - carry
         for r in range(R):

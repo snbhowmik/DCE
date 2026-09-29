@@ -90,6 +90,19 @@ def run_cmd(
         .sort("channel", "month")
     )
     typer.echo(
+        out.comparison.means()
+        .select(
+            "plan",
+            "revenue_inr",
+            "contribution_inr",
+            "d2c_fill_rate",
+            "b2b_fill_rate",
+            "any_b2b_shortfall",
+            "waste_kg",
+        )
+        .with_columns(pl.col(pl.Float64).round(3))
+    )
+    typer.echo(
         out.stress.summary_frame()
         .filter(
             pl.col("metric").is_in(

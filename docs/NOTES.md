@@ -351,6 +351,11 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Consequences:** `any_b2b_shortfall` is strict: in tight worlds it is near 1 even at 99% fill; B2B fill rate and penalty are the graded measures.
 - **Refs:** ARCH §5.7; PRD FR-18; A-009; T5.7
 
+### D-047 · Rule baselines · 2026-09-29 · accepted
+- **Decision:** baselines plan on the optimizer's own inputs (same capacity and demand estimates at the mode's quantiles), spend the marketing plan, never activate co-man, and are replayed on the **same** scenarios. *Proportional*: capacity pro rata to demand (never above demand), pro-rata rationing on the day, no floors. *B2B-first*: commitments first, D2C proportional on the rest, B2B top priority on the day. *FCFS*: no plan; supply pro rata to realized orders (order-arrival lottery). Proportional allocation is proportional, not max-min fair.
+- **Observation (world_06, STABILITY, unblinded):** the optimizer activated co-man because it plans at P15 capacity; on average that output was surplus, costing ₹2.2M of contribution vs the baselines at equal B2B fill. That is the configured posture (insurance), recorded for T11; not tuned here (tuning needs TN entries and training-window evidence).
+- **Refs:** ARCH §5.7; PRD FR-19, §9; T5.8
+
 ---
 
 ## 2. Assumptions register
@@ -713,4 +718,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-046
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** none
+
+### TL-031 · T5.8 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.optimize.baselines` (`water_fill`, `baseline_decision` for proportional / b2b_first / fcfs, `compare_with_baselines` → `Comparison` with a tidy table and mean pivot); pro-rata rationing option in `stress_test`; the pipeline returns the comparison and `dce run` prints it.
+- **Files touched:** `backend/dce/optimize/{baselines,stress}.py`, `backend/dce/runner.py`, `backend/dce/cli.py`, `backend/dce/tests/test_optimize_baselines.py`
+- **Tests:** 4 added / 237 passing (water-fill; baseline plans respect capacity and demand; FCFS pro-rata; all plans on the same scenarios, STABILITY B2B fill ≥ B2B-first and > proportional on a shortage case)
+- **Decisions made:** D-047
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** co-man cost is charged on requested volume; switch to delivered volume if contracts bill on delivery (open question for Q-003).
 

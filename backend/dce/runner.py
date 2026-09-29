@@ -16,6 +16,7 @@ from dce.capacity.model import CapacityForecast, capacity_forecast
 from dce.config import load_app_config, load_scoring_config
 from dce.forecast.run import DatasetForecast, forecast_dataset
 from dce.metrics.scores import EvidenceScores, evidence_scores
+from dce.optimize.baselines import Comparison, compare_with_baselines
 from dce.optimize.coman import CoManInputs, already_active_partners
 from dce.optimize.explain import Explanation, explain
 from dce.optimize.inputs import ModeParams, PlanInputs, build_inputs
@@ -106,6 +107,7 @@ class PipelineOutputs:
     scenarios: Scenarios
     stress: StressResult
     explanation: Explanation
+    comparison: Comparison
 
 
 @dataclass
@@ -162,9 +164,18 @@ def plan_stage(
         mode.b2b_service_floor,
         unit_cost=up.capacity.perishability.waste_cost_inr_per_kg,
     )
+    comparison = compare_with_baselines(
+        stress,
+        inputs,
+        scenarios,
+        (mode.w_rev, mode.w_pen, mode.w_gw),
+        mode.b2b_service_floor,
+        up.capacity.perishability.waste_cost_inr_per_kg,
+        planned_spend=float(spend.planned.sum()),
+    )
     return PipelineOutputs(
         run, window, up.forecast, up.capacity, up.responses, scores, mode, inputs, spend, coman,
-        plan, scenarios, stress, explanation,
+        plan, scenarios, stress, explanation, comparison,
     )  # fmt: skip
 
 
