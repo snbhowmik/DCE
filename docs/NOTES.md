@@ -327,6 +327,15 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Consequences:** deviation from ARCH §5.7's "MILP only with co-man". The regression test reproduces the gaming case.
 - **Refs:** ARCH §5.6, §5.7 constraints 2, 6, 7; D-006, D-008, D-033; T5.3
 
+### D-042 · Co-man in the plan · 2026-09-29 · accepted
+- **Decision:** monthly binary v[j,m] and volume q[j,m] ∈ [min·a, max·a]·v, where a = weeks of the month at/after the earliest output (activation + lead time from the decision week; a partner with volume in the last history week counts as already activated). Min-active linking: a start in month m forces v on for ⌈min_active_weeks / avg weeks per month⌉ months, truncated at the horizon (commitments past the horizon aren't costed in v1). Plan supply = mean historical reliability × q (the stress test samples reliability); cost = unit cost × q requested. `forced_from` hook for the co-man mitigation (T6.3).
+- **Refs:** ARCH §5.7 constraint 8; D-030; T5.4
+
+### D-043 · Parallel backtest · 2026-09-29 · accepted
+- **Context:** world_05 (12 regions, 182 weeks) took 68.6 s end to end (NFR-1: 60 s); 47 of 51 forecast seconds are backtest fits.
+- **Decision:** `run_backtest(n_jobs)` runs (fold × model) cells in joblib/loky worker processes (`forecast.n_jobs: 8`). Cells are independent and seeded, so results are identical to serial (asserted by test). world_05: 68.6 s → 33.6 s.
+- **Refs:** ARCH §8; PRD NFR-1, NFR-2
+
 ---
 
 ## 2. Assumptions register
@@ -649,8 +658,17 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Agent/author:** Claude Code
 - **Summary:** `dce.optimize.spend` (monthly lag matrix, `SpendInputs`, `add_spend`: segment variables with ordered-fill binaries, lift terms, budget, evidence gate + exploration pool, held-at-plan low-confidence regions, spend table) and `dce.optimize.plan` (`solve_plan` with extensions; `build_spend_inputs` from marketing plan, response fits, RES, LTV:CAC).
 - **Files touched:** `backend/dce/optimize/{spend,plan}.py`, `backend/dce/tests/test_optimize_spend.py`
-- **Tests:** 8 added / 209 passing (lag matrix; spend = plan ⇒ forecast; budget reallocates to the better region when capacity allows; budget never exceeded; gate limits expansion to the pool; low-confidence held at plan; spend cut when capacity is short; no segment gaming when held and short)
+- **Tests:** 8 added / 208 passing (lag matrix; spend = plan ⇒ forecast; budget reallocates to the better region when capacity allows; budget never exceeded; gate limits expansion to the pool; low-confidence held at plan; spend cut when capacity is short; no segment gaming when held and short)
 - **Decisions made:** D-041
 - **Deviations from ARCH:** spend makes the model a MILP (D-041)
 - **Known issues / follow-ups:** on the delivered worlds every region is low-confidence (DQ-001), so spend stays at plan there.
+
+### TL-027 · T5.4 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.optimize.coman` (co-man binaries, lead time/availability, min/max, min-run linking, reliability-haircut supply, cost, forced activation hook, already-active detection, co-man table); `solve_plan(…, coman=…)`. Also: `dce.runner` pipeline (`upstream_stage` for the mode-independent stages, `plan_stage`, `run_pipeline`), `dce run --world --mode` CLI recording runs in SQLite, parallel backtest (D-043).
+- **Files touched:** `backend/dce/optimize/{coman,plan}.py`, `backend/dce/runner.py`, `backend/dce/cli.py`, `backend/dce/forecast/{backtest,pipeline}.py`, `config/app.yaml`, tests
+- **Tests:** 9 added / 217 passing (activates when short and profitable; not when unprofitable or unneeded; lead-time blocks early months; availability date; min commit + min-active linking; min run can make activation unprofitable; reliability haircut; already-active + forced activation; serial = parallel backtest)
+- **Decisions made:** D-042, D-043
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** `dce run` timings on the delivered worlds: 34–51 s (NFR-1 met).
 

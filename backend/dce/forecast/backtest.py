@@ -82,34 +82,51 @@ def horizon_slice(data: pl.DataFrame, fold: Fold) -> pl.DataFrame:
     return data.filter(pl.col("week_start").is_in(fold.horizon))
 
 
+def _fit_one(
+    model: Forecaster, hist: pl.DataFrame, horizon: tuple[date, ...], future: pl.DataFrame | None
+) -> pl.DataFrame:
+    return model.fit_predict(hist, horizon, future)
+
+
 def run_backtest(
     data: pl.DataFrame,
     models: Sequence[Forecaster],
     folds: Sequence[Fold],
     future: pl.DataFrame | None = None,
+    n_jobs: int = 1,
 ) -> pl.DataFrame:
     """Forecast every fold with every model; join actuals.
 
     Returns `model, fold, origin, h, series_id, week_start, y, q10, q50, q90`.
     `future` holds known-future covariates for all weeks; it is passed through untouched.
+    (fold × model) cells are independent and seeded, so `n_jobs > 1` runs them in worker
+    processes without changing results (ARCH §8).
     """
+    tasks = [(fold, model) for fold in folds for model in models]
+    hists = {fold.k: train_slice(data, fold) for fold in folds}
+    if n_jobs == 1 or len(tasks) <= 1:
+        preds = [_fit_one(m, hists[f.k], f.horizon, future) for f, m in tasks]
+    else:
+        from joblib import Parallel, delayed
+
+        preds = Parallel(n_jobs=n_jobs, backend="loky")(
+            delayed(_fit_one)(m, hists[f.k], f.horizon, future) for f, m in tasks
+        )
     out = []
-    for fold in folds:
-        hist = train_slice(data, fold)
+    for (fold, model), pred in zip(tasks, preds, strict=True):
+        hist = hists[fold.k]
         actual = horizon_slice(data, fold).select("series_id", "week_start", "y")
-        for model in models:
-            pred = model.fit_predict(hist, fold.horizon, future)
-            _check_prediction(pred, hist, fold, model.name)
-            out.append(
-                pred.join(actual, on=["series_id", "week_start"], how="inner").with_columns(
-                    pl.lit(model.name).alias("model"),
-                    pl.lit(fold.k).alias("fold"),
-                    pl.lit(fold.origin).alias("origin"),
-                    ((pl.col("week_start") - pl.lit(fold.origin)).dt.total_days() // 7 + 1)
-                    .cast(pl.Int32)
-                    .alias("h"),
-                )
+        _check_prediction(pred, hist, fold, model.name)
+        out.append(
+            pred.join(actual, on=["series_id", "week_start"], how="inner").with_columns(
+                pl.lit(model.name).alias("model"),
+                pl.lit(fold.k).alias("fold"),
+                pl.lit(fold.origin).alias("origin"),
+                ((pl.col("week_start") - pl.lit(fold.origin)).dt.total_days() // 7 + 1)
+                .cast(pl.Int32)
+                .alias("h"),
             )
+        )
     if not out:
         return pl.DataFrame()
     cols = ["model", "fold", "origin", "h", "series_id", "week_start", "y", *QCOLS]

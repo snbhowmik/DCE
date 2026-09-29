@@ -8,6 +8,7 @@ import numpy as np
 import polars as pl
 
 from dce.metrics.scores import EvidenceScores
+from dce.optimize.coman import CoManInputs, add_coman, coman_table
 from dce.optimize.inputs import ModeParams, PlanInputs
 from dce.optimize.lp import PlanResult, build_lp, extract, finalize_lp
 from dce.optimize.solver import solve
@@ -20,15 +21,19 @@ def solve_plan(
     inp: PlanInputs,
     mode: ModeParams,
     spend: SpendInputs | None = None,
+    coman: CoManInputs | None = None,
     *,
     time_limit: float = 10.0,
     mip_gap: float = 0.005,
 ) -> PlanResult:
     model = build_lp(inp, mode)
     sv = add_spend(model, inp, spend, mode) if spend is not None else None
+    cv = add_coman(model, inp, coman, mode) if coman is not None else None
     finalize_lp(model, inp, mode)
     res = solve(model.prob, time_limit=time_limit, mip_gap=mip_gap)
     out = extract(model, res, inp, mode)
+    if cv is not None and coman is not None and out.optimal:
+        out.extras["coman"] = coman_table(cv, inp, coman)
     if sv is not None and spend is not None and out.optimal:
         out.extras["spend"] = spend_table(sv, inp, spend)
         out.extras["d2c_demand_effective"] = np.array(

@@ -24,6 +24,7 @@ forecast:
     step_weeks: 4
     min_train_weeks: 52
   mase_seasonality: 52
+  n_jobs: 8                     # backtest (fold × model) cells in parallel worker processes
   # D-038: active contracts whose end date sits at the snapshot boundary keep ordering; treat
   # them as rolling renewals. A contract_end later in the horizon is always honored.
   b2b_rolling_renewal: true

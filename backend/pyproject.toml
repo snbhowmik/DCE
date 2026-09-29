@@ -21,6 +21,7 @@ dependencies = [
     "holidays>=0.50",
     "highspy>=1.7",
     "pulp>=2.9,<3",
+    "joblib>=1.6.0",
 ]
 
 [project.scripts]

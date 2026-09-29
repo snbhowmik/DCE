@@ -52,6 +52,7 @@ class ForecastConfig:
     calib_min_points: int = 30
     models: tuple[str, ...] = ALL_MODELS
     b2b_rolling_renewal: bool = True
+    n_jobs: int = 1
     anomaly: AnomalyConfig = field(default_factory=AnomalyConfig)
 
     @classmethod
@@ -70,6 +71,7 @@ class ForecastConfig:
             calib_min_points=int(f.get("calib_min_points", d.calib_min_points)),
             models=tuple(f.get("models", d.models)),
             b2b_rolling_renewal=bool(f.get("b2b_rolling_renewal", d.b2b_rolling_renewal)),
+            n_jobs=int(f.get("n_jobs", d.n_jobs)),
             anomaly=AnomalyConfig.from_scoring(scoring),
         )
 
@@ -164,7 +166,7 @@ def run_forecast(
     )
     if not folds:
         raise ValueError("history too short for any backtest fold")
-    bt = run_backtest(clean, models, folds, covariates)
+    bt = run_backtest(clean, models, folds, covariates, n_jobs=cfg.n_jobs)
     scores = score_backtest(bt, clean, cfg.mase_seasonality)
     selection = select_models(scores)
     # Series too young for any fold get the baseline and pooled calibration.

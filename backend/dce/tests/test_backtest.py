@@ -11,6 +11,7 @@ import pytest
 
 from dce.forecast.backtest import (
     Fold,
+    Forecaster,
     mase_scale,
     rolling_origin_folds,
     run_backtest,
@@ -149,3 +150,20 @@ def test_constant_series_mase_is_null() -> None:
     scores = score_backtest(run_backtest(data, [SpyNaive()], folds), data)
     assert scores["mase"][0] is None
     assert scores["coverage"][0] == pytest.approx(1.0)
+
+
+def test_parallel_backtest_is_identical_to_serial(
+    tiny_tables: dict[str, pl.DataFrame], tiny_window: tuple[date, date]
+) -> None:
+    from dce.demand.reconstruct import weekly_demand
+    from dce.forecast.baselines import SeasonalNaive, WindowAverage
+    from dce.forecast.lgbm import LightGBMQuantile
+
+    d = weekly_demand(tiny_tables["orders"], tiny_window[1]).select(
+        "series_id", "week_start", pl.col("demand_kg").alias("y")
+    )
+    folds = rolling_origin_folds(*tiny_window)[-3:]
+    models: list[Forecaster] = [SeasonalNaive(52), WindowAverage(8), LightGBMQuantile()]
+    serial = run_backtest(d, models, folds, n_jobs=1)
+    parallel = run_backtest(d, models, folds, n_jobs=2)
+    assert serial.equals(parallel)
