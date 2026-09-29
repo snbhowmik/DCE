@@ -31,6 +31,7 @@ from dce.optimize.stress import (
     stress_test,
 )
 from dce.response.run import ResponseSet, fit_responses
+from dce.risk.detect import RiskReport, assess
 from dce.strategy import resolve_mode
 
 
@@ -108,6 +109,7 @@ class PipelineOutputs:
     stress: StressResult
     explanation: Explanation
     comparison: Comparison
+    risk: RiskReport
 
 
 @dataclass
@@ -156,8 +158,9 @@ def plan_stage(
     )
     explanation = explain(plan)
     scenarios = build_scenarios(inputs, up.forecast, up.capacity, coman.partners, run.seed)
+    decision = PlanDecision.from_plan(plan, coman.partners, explanation.duals)
     stress = stress_test(
-        PlanDecision.from_plan(plan, coman.partners, explanation.duals),
+        decision,
         scenarios,
         inputs,
         (mode.w_rev, mode.w_pen, mode.w_gw),
@@ -173,9 +176,19 @@ def plan_stage(
         up.capacity.perishability.waste_cost_inr_per_kg,
         planned_spend=float(spend.planned.sum()),
     )
+    risk = assess(
+        inputs,
+        up.forecast,
+        up.capacity,
+        decision,
+        coman.partners,
+        mode.breach_threshold,
+        run.app.get("risk", {}),
+        run.seed,
+    )
     return PipelineOutputs(
         run, window, up.forecast, up.capacity, up.responses, scores, mode, inputs, spend, coman,
-        plan, scenarios, stress, explanation, comparison,
+        plan, scenarios, stress, explanation, comparison, risk,
     )  # fmt: skip
 
 

@@ -113,6 +113,13 @@ def run_cmd(
     )
     if "coman" in out.plan.extras:
         typer.echo(out.plan.extras["coman"].filter(pl.col("active")))
+    r = out.risk
+    typer.echo(f"risk: breach θ={r.breach_threshold:.2f} · {len(r.alerts)} alert(s)")
+    for a in r.alerts:
+        typer.echo(
+            f"  {a.kind:<7} {a.start}…{a.end} in {a.weeks_until} wk · "
+            f"peak p={a.peak_probability:.2f} · E[kg]={a.expected_kg:,.0f}"
+        )
 
 
 contract_app = typer.Typer(no_args_is_help=True, help="Data contract tools.")

@@ -368,6 +368,25 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Consequences:** P4 is unchanged. The system still works with no LLM at all. T9.3's 15-prompt acceptance set must pass with `provider: none` (deterministic parser alone) for supported phrasings.
 - **Refs:** IDEATION P4; ARCH §5.11, §8 (security: outbound calls only to the configured LLM endpoint, none when offline); T9.1–T9.3
 
+### D-050 · D-049 accepted: the AI layer runs on a small hosted or offline LLM · 2026-09-29 · accepted
+- **Context:** the owner confirmed D-049: the product will run on a very small, low-token provider or an offline LLM.
+- **Decision:** D-049 is accepted as written. The default `llm.provider` becomes `none` (template brief, deterministic scenario parser); an OpenAI-compatible endpoint (Ollama, llama.cpp, vLLM, LM Studio, low-cost hosted) is opt-in via config/env. No Anthropic-specific client is built. The UI must read well with `provider: none`, because that is the path demos are guaranteed to have.
+- **Consequences:** ARCH §5.11 and PRD FR-29's "default: Anthropic" are superseded for v1. Prompts are compact digests with a token budget.
+- **Refs:** D-049; IDEATION P4; ARCH §5.11; PRD FR-26–29; T9.1–T9.3
+
+### D-051 · UI-first reordering: run payload, API and dashboard before the rest of Phases 6–9 · 2026-09-29 · accepted
+- **Context:** the owner wants the dashboard ready for review by expert judges. TASK.md orders P6 → P7 → P8 → P9 → P10, so the UI would come last. The analytical core (P0–P5) is done and already produces everything the Overview, Allocation, Markets, Accounts and Health screens need.
+- **Options considered:** A) keep strict order; B) build a vertical slice now (T6.1 detector, run payload, the T8 API subset those screens need, and the T10 screens), then finish T6.2–T6.3, T7.1, T9 and the remaining screens (Alerts mitigations, Onboarding, Scenarios) against the same payload; C) a static mock UI.
+- **Decision:** B. T6.1 is done first because the Overview needs breach and surplus markers. Screens whose backend does not exist yet show an explicit "coming in Phase n" state, never placeholder numbers (P4, P6). Runs are precomputed and persisted (`dce precompute`), so the UI answers instantly in a demo; `POST /runs` still runs the pipeline in the background.
+- **Consequences:** TASK.md tasks are ticked only when their full acceptance criteria are met; partial work is noted in the Task Log. The run payload becomes the contract between backend, UI and the AI layer (ARCH §5.11 `RunPayload`).
+- **Refs:** TASK.md rule 1; PRD §8; ARCH §5.11, §6
+
+### D-052 · Breach/surplus detector conventions · 2026-09-29 · accepted
+- **Context:** ARCH §5.8 leaves open what "committed co-man" is, whether carry-over counts, and how a surplus threshold is expressed.
+- **Decision:** risk is assessed on the plan as committed: supply = in-house paths + the plan's co-man requests (spread evenly over each month's output-feasible weeks) × sampled reliability; demand = in-scope D2C regions + B2B accounts + the plan's spend-driven D2C shift. Carry-over is ignored (conservative for a perishable product). Surplus week: P(supply − demand > `surplus_share`·supply) ≥ `surplus_probability` (app config, 0.15 / 0.5), and never in a breach week. Consecutive flagged weeks form one alert with its start, end, weeks-until, peak probability and expected kg.
+- **Consequences:** a plan that buys co-man can raise surplus alerts, which is the intended signal (world_06 STABILITY, unblinded: surplus alert from week 4, ≈5.8 t expected). T6.3 mitigations will re-run `assess` with the lever applied.
+- **Refs:** ARCH §5.8; PRD FR-22, FR-25; A-003; T6.1
+
 ---
 
 ## 2. Assumptions register
@@ -749,3 +768,11 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Deviations from ARCH:** §9.9 restated (D-048)
 - **Known issues / follow-ups:** none
 
+### TL-033 · T6.1 · 2026-09-29
+- **Agent/author:** Claude Code
+- **Summary:** `dce.risk.detect`: `detect` (weekly P_breach, expected shortfall, P_surplus, expected surplus, demand/supply bands, episode alerts), `weekly_demand_paths`, `weekly_supply_paths` (committed co-man honoring lead time), `assess`; wired into the pipeline (`PipelineOutputs.risk`) and `dce run` output. `risk:` section in `config/app.yaml`. Also logged D-050 (D-049 accepted) and D-051 (UI-first ordering).
+- **Files touched:** `backend/dce/risk/detect.py`, `backend/dce/runner.py`, `backend/dce/cli.py`, `config/app.yaml`, `backend/dce/tests/test_risk_detect.py`
+- **Tests:** 6 added / 247 passing (hand-computed P_breach and shortfall; mode threshold decides flagging; consecutive weeks → one alert; surplus never in a breach week; shape guard; fixture pipeline + co-man supply only after lead time)
+- **Decisions made:** D-050, D-051, D-052
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** none

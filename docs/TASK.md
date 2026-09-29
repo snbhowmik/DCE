@@ -139,7 +139,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 
 ## Phase 6 — Risk and mitigation
 
-- [ ] **T6.1 Breach + surplus detector** (weekly P_breach from paths; mode thresholds). *Depends:* T2.6, T3.3
+- [x] **T6.1 Breach + surplus detector** (weekly P_breach from paths; mode thresholds). *Depends:* T2.6, T3.3
 - [ ] **T6.2 Mitigation catalog** (`config/mitigations.yaml` M1–M6 with lead times, cost, harm, reversibility). *Depends:* T6.1
 - [ ] **T6.3 Impact via re-solve + ranking + act-by dates**
   *Accept:* infeasible-by-lead-time mitigations are excluded (test); ranking is deterministic.

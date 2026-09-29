@@ -49,6 +49,11 @@ response:
   min_spend_weeks: 26             # weeks with non-zero spend needed to identify a response
   extrapolation_factor: 1.5       # recommended spend ≤ max observed weekly spend × factor
   pwl_segments: 6                 # K piecewise-linear segments per region for the optimizer
+risk:
+  # ARCH §5.8: surplus week = P(supply − demand > surplus_share · supply) ≥ surplus_probability.
+  # Breach thresholds come from the strategy mode (breach_threshold).
+  surplus_share: 0.15
+  surplus_probability: 0.5
 optimize:
   month_weeks: [4, 4, 5]            # 13-week horizon → 3 planning months
   q_demand_d2c: 0.5                 # D2C demand quantile planned against (modes may override)
