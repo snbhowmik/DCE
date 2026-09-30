@@ -1,4 +1,4 @@
-.PHONY: setup test lint fmt typecheck run-api run-web precompute
+.PHONY: setup test lint fmt typecheck run-api run-web precompute refresh
 
 UV := uv
 BACKEND := backend
@@ -29,3 +29,6 @@ run-web:
 
 precompute:                        # run + store payloads for every world × mode (≈4 min, all 7 worlds)
 	$(UV) run dce precompute
+
+refresh:                           # ingest every drop in data/incoming + precompute (new worlds)
+	bash deploy/refresh-worlds.sh --no-restart

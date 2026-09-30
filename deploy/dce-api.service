@@ -1,0 +1,15 @@
+[Unit]
+Description=Biokraft DCE API (FastAPI / uvicorn)
+After=network.target
+
+[Service]
+User=dce
+WorkingDirectory=/opt/dce
+Environment=HOME=/var/lib/dce UV_PYTHON_INSTALL_DIR=/var/lib/dce/python UV_CACHE_DIR=/var/lib/dce/.cache/uv
+ExecStart=/opt/dce/.venv/bin/uvicorn dce.api.app:app --host 127.0.0.1 --port 8000 --timeout-keep-alive 30
+Restart=always
+RestartSec=3
+MemoryMax=6G
+
+[Install]
+WantedBy=multi-user.target

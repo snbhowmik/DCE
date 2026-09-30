@@ -20,6 +20,7 @@ from sqlalchemy import Engine
 from sqlmodel import Session, select
 
 from dce import __version__
+from dce.scenario import Levers
 from dce.store.db import make_engine
 from dce.store.models import Dataset, Decision, Recommendation, Run
 from dce.strategy import resolve_mode
@@ -96,7 +97,10 @@ def datasets(
     for run, world in latest_runs(engine):
         runs.setdefault(world, []).append(_run_row(run, world))
     with Session(engine) as s:
-        rows = s.exec(select(Dataset).order_by(Dataset.world_id)).all()
+        rows = s.exec(
+            select(Dataset).order_by(Dataset.world_id, Dataset.created_at.desc())  # type: ignore[attr-defined]
+        ).all()
+    names = world_names()
     out, seen = [], set()
     for d in rows:
         if d.world_id in seen or d.n_errors or (is_fixture(d) and not include_fixtures):
@@ -107,6 +111,7 @@ def datasets(
             {
                 "dataset_hash": d.dataset_hash,
                 "world_id": d.world_id,
+                "name": names.get(d.world_id),
                 "contract_version": d.contract_version,
                 "n_errors": d.n_errors,
                 "n_warnings": d.n_warnings,
@@ -205,6 +210,46 @@ def compare(
         "dataset_hash": next(iter(latest.values())).dataset_hash,
         "modes": out,
     }
+
+
+# ------------------------------------------------------------------ what-if scenarios (T9.3)
+
+
+def world_names() -> dict[str, str]:
+    import yaml
+
+    from dce import paths
+
+    p = paths.CONFIG_DIR / "worlds.yaml"
+    return (
+        {str(k): str(v) for k, v in (yaml.safe_load(p.read_text()) or {}).items()}
+        if p.exists()
+        else {}
+    )
+
+
+class ScenarioRequest(BaseModel):
+    world_id: str
+    levers: Levers = Field(default_factory=Levers)
+
+
+@app.post("/api/v1/scenarios", status_code=201)
+def create_scenario(req: ScenarioRequest, engine: Engine = Depends(get_engine)) -> dict[str, Any]:
+    """Apply what-if levers to the world's cached forecast/capacity and re-solve (seconds)."""
+    from dce.service import dataset_for_world, run_scenario
+
+    try:
+        resolve_mode(req.levers.mode, req.levers.mode_overrides)
+    except (LookupError, ValueError) as exc:
+        raise HTTPException(422, f"invalid strategy: {exc}") from exc
+    try:
+        dataset_for_world(engine, req.world_id)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    try:
+        return run_scenario(engine, req.world_id, req.levers)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 # ------------------------------------------------------------------ background runs (T8.2)

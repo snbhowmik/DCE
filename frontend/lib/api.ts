@@ -1,5 +1,5 @@
 // Thin client for the FastAPI backend (/api/v1, proxied by next.config.ts rewrites).
-import type { Brief, CompareResult, DatasetRow, DecisionRow, Payload } from "./types";
+import type { Brief, CompareResult, DatasetRow, DecisionRow, Levers, Payload, ScenarioResult } from "./types";
 
 export class ApiError extends Error {
   constructor(
@@ -65,6 +65,7 @@ export const api = {
     user?: string;
     details?: Record<string, unknown>;
   }) => post<DecisionRow>("/decisions", body),
+  scenario: (world_id: string, levers: Levers) => post<ScenarioResult>("/scenarios", { world_id, levers }),
   startRun: (world_id: string, modes: string[]) =>
     post<{ job_id: string; status: string }>("/runs", { world_id, modes }),
   job: (jobId: string) =>

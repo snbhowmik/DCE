@@ -362,6 +362,10 @@ def _health_section(out: PipelineOutputs, validation: dict[str, Any] | None) -> 
     }
 
 
+def _col_sum(df: Any, col: str) -> float:
+    return float(df[col].sum()) if isinstance(df, pl.DataFrame) and col in df.columns else 0.0
+
+
 def _kpis(out: PipelineOutputs) -> dict[str, Any]:
     s = out.stress.summary()
     alloc = out.plan.allocation()
@@ -384,16 +388,10 @@ def _kpis(out: PipelineOutputs) -> dict[str, Any]:
             "b2b_fill_rate": s["b2b_fill_rate"],
             "p_any_b2b_shortfall": s["any_b2b_shortfall"]["mean"],
             "waste_kg": s["waste_kg"],
-            "coman_requested_kg": float(cm["requested_kg"].sum())
-            if isinstance(cm, pl.DataFrame)
-            else 0.0,
-            "coman_cost_inr": float(cm["cost_inr"].sum()) if isinstance(cm, pl.DataFrame) else 0.0,
-            "spend_planned_inr": float(sp["planned_inr"].sum())
-            if isinstance(sp, pl.DataFrame)
-            else 0.0,
-            "spend_recommended_inr": float(sp["recommended_inr"].sum())
-            if isinstance(sp, pl.DataFrame)
-            else 0.0,
+            "coman_requested_kg": _col_sum(cm, "requested_kg"),
+            "coman_cost_inr": _col_sum(cm, "cost_inr"),
+            "spend_planned_inr": _col_sum(sp, "planned_inr"),
+            "spend_recommended_inr": _col_sum(sp, "recommended_inr"),
             "n_breach_alerts": sum(a.kind == "breach" for a in out.risk.alerts),
             "n_surplus_alerts": sum(a.kind == "surplus" for a in out.risk.alerts),
             "best_baseline": best_base.get("plan"),

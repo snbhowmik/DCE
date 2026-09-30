@@ -7,6 +7,8 @@ on top of them (P1), so precomputing all modes of a world costs one forecast.
 from __future__ import annotations
 
 import json
+import pickle
+import threading
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
@@ -19,7 +21,8 @@ from sqlmodel import Session, select
 from dce.ingest import load_dataset, load_history_window
 from dce.ingest.core import processed_path
 from dce.payload import build_payload, write_payload
-from dce.runner import build_run_config, plan_stage, upstream_stage
+from dce.runner import UpstreamOutputs, build_run_config, plan_stage, upstream_stage
+from dce.scenario import Levers, apply_levers
 from dce.store.models import Dataset, Run, RunArtifact
 from dce.store.runs import add_artifact, finish_run, run_dir, start_run
 
@@ -70,6 +73,7 @@ def run_modes(
     ov = {"app": app_overrides} if app_overrides else {}
     up = upstream_stage(tables, window, build_run_config(modes[0], seed, **ov))
     upstream_s = time.time() - t0
+    save_upstream(ds.dataset_hash, up)  # scenarios re-solve on exactly this forecast
     out: list[RunRecord] = []
     for mode in modes:
         run = build_run_config(mode, seed, **ov)
@@ -121,7 +125,7 @@ def latest_runs(engine: Engine) -> list[tuple[Run, str]]:
             select(Run, Dataset.world_id)
             .join(Dataset, Dataset.dataset_hash == Run.dataset_hash)  # type: ignore[arg-type]
             .join(RunArtifact, RunArtifact.run_id == Run.run_id)  # type: ignore[arg-type]
-            .where(Run.status == "succeeded", RunArtifact.kind == PAYLOAD_KIND)
+            .where(Run.status == "succeeded", Run.kind == "plan", RunArtifact.kind == PAYLOAD_KIND)
             .order_by(Run.created_at.desc())  # type: ignore[attr-defined]
         ).all()
     seen: set[tuple[str, str]] = set()
@@ -131,3 +135,94 @@ def latest_runs(engine: Engine) -> list[tuple[Run, str]]:
             seen.add((world, run.mode))
             out.append((run, world))
     return out
+
+
+# ------------------------------------------------------------------ upstream cache + scenarios
+
+_upstream: dict[str, UpstreamOutputs] = {}
+_upstream_lock = threading.Lock()
+
+
+def _upstream_file(dataset_hash: str) -> Path:
+    return processed_path(dataset_hash) / "upstream.pkl"
+
+
+def save_upstream(dataset_hash: str, up: UpstreamOutputs) -> None:
+    """Mode-independent stages, pickled next to the dataset (written by our own pipeline only)."""
+    p = _upstream_file(dataset_hash)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_suffix(".tmp")
+    tmp.write_bytes(pickle.dumps(up, protocol=pickle.HIGHEST_PROTOCOL))
+    tmp.replace(p)
+    _upstream[dataset_hash] = up
+
+
+def load_upstream(dataset_hash: str, tables: dict[str, Any], window: Any) -> UpstreamOutputs:
+    with _upstream_lock:
+        if dataset_hash in _upstream:
+            return _upstream[dataset_hash]
+        p = _upstream_file(dataset_hash)
+        if p.exists():
+            up = pickle.loads(p.read_bytes())
+        else:
+            up = upstream_stage(tables, window, build_run_config("STABILITY"))
+            save_upstream(dataset_hash, up)
+        if len(_upstream) >= 4:
+            _upstream.pop(next(iter(_upstream)))
+        _upstream[dataset_hash] = up
+        return up
+
+
+def run_scenario(engine: Engine, world_id: str, levers: Levers) -> dict[str, Any]:
+    """Apply levers to the world's cached upstream, re-solve, stress-test and persist the result
+    as a `scenario` run whose parent is the latest plan run of the same world and mode."""
+    ds = dataset_for_world(engine, world_id)
+    base = next(
+        (r for r, w in latest_runs(engine) if w == world_id and r.mode == levers.mode), None
+    )
+    tables = load_dataset(ds.dataset_hash)
+    window = load_history_window(ds.dataset_hash, tables)
+    up, tables2 = apply_levers(levers, load_upstream(ds.dataset_hash, tables, window), tables)
+    run = build_run_config(levers.mode, None, levers.mode_overrides)
+    rec = start_run(
+        engine,
+        dataset_hash=ds.dataset_hash,
+        config=run.as_dict() | {"levers": levers.model_dump()},
+        mode=levers.mode,
+        seed=run.seed,
+        kind="scenario",
+        parent_run_id=base.run_id if base else None,
+    )
+    t0 = time.time()
+    try:
+        res = plan_stage(tables2, window, run, up)
+        meta = {
+            "run_id": rec.run_id,
+            "world_id": world_id,
+            "dataset_hash": ds.dataset_hash,
+            "config_hash": rec.config_hash,
+            "git_sha": rec.git_sha,
+            "created_at": rec.created_at,
+            "timing_s": {"upstream": 0.0, "plan": time.time() - t0},
+            "kind": "scenario",
+            "parent_run_id": rec.parent_run_id,
+            "levers": levers.model_dump(),
+            "changes": levers.changes(),
+        }
+        path = write_payload(
+            build_payload(res, tables2, meta, validation_report(ds.dataset_hash)),
+            run_dir(rec.run_id) / "payload.json",
+        )
+        add_artifact(engine, rec.run_id, PAYLOAD_KIND, path)
+    except Exception as exc:
+        finish_run(engine, rec.run_id, error=repr(exc))
+        raise
+    finish_run(engine, rec.run_id)
+    return {
+        "run_id": rec.run_id,
+        "parent_run_id": rec.parent_run_id,
+        "world_id": world_id,
+        "mode": levers.mode,
+        "changes": levers.changes(),
+        "seconds": round(time.time() - t0, 2),
+    }

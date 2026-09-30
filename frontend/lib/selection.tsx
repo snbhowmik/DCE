@@ -12,6 +12,9 @@ interface Selection {
   setWorld: (w: string) => void;
   setMode: (m: Mode) => void;
   runId: string | null;
+  baseRunId: string | null;
+  scenarioRunId: string | null;
+  setScenario: (runId: string | null) => void;
   payload: Payload | null;
   loading: boolean;
   error: string | null;
@@ -34,6 +37,7 @@ export function SelectionProvider({ children }: { children: React.ReactNode }) {
   const [world, setWorldState] = useState<string | null>(null);
   const [mode, setModeState] = useState<Mode>("STABILITY");
   const [payload, setPayload] = useState<Payload | null>(null);
+  const [scenarioRunId, setScenario] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,10 +65,11 @@ export function SelectionProvider({ children }: { children: React.ReactNode }) {
     void refresh();
   }, [refresh]);
 
-  const runId = useMemo(() => {
+  const baseRunId = useMemo(() => {
     const d = datasets?.find((x) => x.world_id === world);
     return d?.runs.find((r) => r.mode === mode)?.run_id ?? null;
   }, [datasets, world, mode]);
+  const runId = scenarioRunId ?? baseRunId;
 
   useEffect(() => {
     let live = true;
@@ -91,17 +96,22 @@ export function SelectionProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   };
   const setWorld = (w: string) => {
+    setScenario(null);
     setWorldState(w);
     persist(w, mode);
   };
   const setMode = (m: Mode) => {
+    setScenario(null);
     setModeState(m);
     persist(world, m);
   };
 
   return (
     <Ctx.Provider
-      value={{ datasets, world, mode, setWorld, setMode, runId, payload, loading, error, refresh }}
+      value={{
+        datasets, world, mode, setWorld, setMode, runId, baseRunId, scenarioRunId, setScenario,
+        payload, loading, error, refresh,
+      }}
     >
       {children}
     </Ctx.Provider>

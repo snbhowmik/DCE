@@ -60,6 +60,20 @@ make test                           # all tests incl. invariants
 
 Or everything at once: `docker compose up`.
 
+### Deploy on RHEL 8.10 (one command)
+
+```bash
+# on the server, from a checkout that includes data/incoming/ (it is gitignored: rsync it over)
+rsync -a data/incoming/ server:/path/to/checkout/data/incoming/
+sudo bash deploy/install.sh        # uv + Python 3.12, Node 20, build, ingest, precompute, systemd, nginx :80
+```
+
+Services: `dce-api` (uvicorn on 127.0.0.1:8000), `dce-web` (Next.js on 127.0.0.1:3000), nginx on :80 in front of both,
+with rate limits on what-ifs and re-runs. SELinux (`httpd_can_network_connect`) and firewalld are configured.
+New data drops: copy them to `/opt/dce/data/incoming/` and run `sudo -u dce bash /opt/dce/deploy/refresh-worlds.sh`.
+Optional password: uncomment `auth_basic` in `/etc/nginx/conf.d/dce.conf` and add users with `htpasswd -B`.
+World display names live in `config/worlds.yaml` (UI only).
+
 ### Dashboard (what reviewers see)
 
 ```bash

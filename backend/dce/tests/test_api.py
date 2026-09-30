@@ -103,3 +103,53 @@ def test_background_run_completes(client: TestClient, monkeypatch: pytest.Monkey
             break
         time.sleep(0.05)
     assert st["status"] == "succeeded" and st["runs"][0]["run_id"] == "run_fake"
+
+
+def test_scenarios_resolve_without_touching_base_runs(
+    client: TestClient,
+    runs: tuple[Any, list[Any]],  # noqa: F811
+) -> None:
+    """T9.3 executor: levers edit copies of the cached upstream, re-solve, persist as a child run."""
+    import numpy as np
+
+    from dce.service import _upstream
+
+    _, recs = runs
+    before = {k: v.capacity.paths.copy() for k, v in _upstream.items()}
+    base = client.get(f"/api/v1/runs/{recs[0].run_id}").json()
+    r = client.post(
+        "/api/v1/scenarios",
+        json={"world_id": "tiny_world", "levers": {"mode": "STABILITY", "capacity_pct": -60}},
+    )
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["parent_run_id"] == recs[0].run_id
+    assert body["changes"] == ["in-house capacity -60% in weeks 1–13"]
+    sc = client.get(f"/api/v1/runs/{body['run_id']}").json()
+    assert sc["run"]["kind"] == "scenario" and sc["run"]["levers"]["capacity_pct"] == -60
+    assert sc["kpis"]["capacity_planned_kg"] < base["kpis"]["capacity_planned_kg"]
+    assert sc["run"]["forecast_hash"] == base["run"]["forecast_hash"]  # demand untouched
+    # the cached upstream is never mutated, and scenario runs never replace base plans
+    assert all(np.array_equal(before[k], _upstream[k].capacity.paths) for k in before)
+    latest = client.get("/api/v1/runs", params={"world": "tiny_world"}).json()
+    assert {x["run_id"] for x in latest} == {x.run_id for x in recs}
+
+
+def test_scenario_errors(client: TestClient) -> None:
+    post = lambda body: client.post("/api/v1/scenarios", json=body).status_code  # noqa: E731
+    assert post({"world_id": "nope"}) == 404
+    assert post({"world_id": "tiny_world", "levers": {"mode": "NOPE"}}) == 422
+    assert post({"world_id": "tiny_world", "levers": {"capacity_pct": -99}}) == 422
+    assert (
+        post({"world_id": "tiny_world", "levers": {"account_id": "X", "account_demand_pct": 50}})
+        == 422
+    )
+    assert (
+        post(
+            {
+                "world_id": "tiny_world",
+                "levers": {"mode": "GROWTH", "mode_overrides": {"q_capacity": 0.2}},
+            }
+        )
+        == 422
+    )

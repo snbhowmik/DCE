@@ -15,9 +15,34 @@ export interface RunRow {
   created_at: string;
 }
 
+export interface Levers {
+  mode: string;
+  mode_overrides?: Record<string, unknown> | null;
+  d2c_demand_pct?: number;
+  b2b_demand_pct?: number;
+  account_id?: string | null;
+  account_demand_pct?: number;
+  from_week?: number;
+  capacity_pct?: number;
+  capacity_from_week?: number;
+  capacity_to_week?: number;
+  coman_available?: boolean;
+  budget_pct?: number;
+}
+
+export interface ScenarioResult {
+  run_id: string;
+  parent_run_id: string | null;
+  world_id: string;
+  mode: string;
+  changes: string[];
+  seconds: number;
+}
+
 export interface DatasetRow {
   dataset_hash: string;
   world_id: string;
+  name: string | null;
   contract_version: string | null;
   n_errors: number;
   n_warnings: number;
@@ -78,6 +103,10 @@ export interface Payload {
     accounts: string[];
     plan_status: string;
     forecast_hash: string;
+    kind?: "scenario";
+    parent_run_id?: string | null;
+    changes?: string[];
+    levers?: Levers;
     mode_config: Record<string, unknown> & { q_capacity: number; breach_threshold: number };
   };
   kpis: {

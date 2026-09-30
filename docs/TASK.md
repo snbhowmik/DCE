@@ -163,7 +163,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 - [x] **T9.1 `LLMClient` + OpenAI-compatible implementation (small/offline models; `provider: none`) per D-049** (env key, model from config, timeout/retry, prompt + response logging with secrets redacted).
 - [x] **T9.2 Narrative + NumberGroundingValidator + template fallback**
   *Accept:* validator test with an injected fake number → rejected; fallback template renders.
-- [ ] **T9.3 Scenario parser + executor + diff**
+- [~] **T9.3 Scenario parser + executor + diff**
   *Accept:* 15 example prompts (in `tests/scenarios.yaml`) parse into correct specs; unsupported requests return `unsupported`.
   *Depends:* T8.1
 
@@ -175,7 +175,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 - [x] **T10.4 Markets** (region scorecards with RES breakdown)
 - [~] **T10.5 B2B accounts + onboarding simulator**
 - [~] **T10.6 Alerts & mitigations**
-- [~] **T10.7 Scenarios**
+- [x] **T10.7 Scenarios**
 - [x] **T10.8 Decision log** (accept/reject with reason)
 - [x] **T10.9 Data & model health** (validation, backtests, coverage, anomalies)
   *Accept (all):* every number shows a tooltip with run_id + source; P10–P90 band always shown with P50.
@@ -191,7 +191,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 
 ## Phase 12 — Demo and polish
 
-- [ ] **T12.1 Docker Compose one-command demo**
+- [x] **T12.1 Docker Compose one-command demo**
 - [ ] **T12.2 Demo script** (5-minute walkthrough: mode switch → breach → mitigation → onboarding → what-if)
 - [ ] **T12.3 README final pass + screenshots**
 - [ ] **T12.4 Closed-loop demo** (two sequential data drops: run on drop 1, log decisions, ingest drop 2, show outcomes vs. predictions and RES refresh)

@@ -22,7 +22,7 @@ const NAV = [
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
-  const { payload } = useSelection();
+  const { payload, scenarioRunId, setScenario } = useSelection();
   const alerts = payload?.risk.alerts ?? [];
   const hasBreach = alerts.some((a) => a.kind === "breach");
   return (
@@ -62,6 +62,17 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <ContextBar />
+        {scenarioRunId && payload?.run.kind === "scenario" && (
+          <div className="border-b border-hair bg-[color:var(--warning-wash)]">
+            <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-3 px-5 py-2 text-[13px] lg:px-8">
+              <strong>Viewing a what-if scenario</strong>
+              <span className="text-ink-2">{(payload.run.changes ?? []).join(" · ") || "strategy only"}</span>
+              <button onClick={() => setScenario(null)} className="ml-auto rounded border border-hair bg-surface px-2 py-0.5 text-[12.5px] hover:bg-surface-2">
+                Back to base plan
+              </button>
+            </div>
+          </div>
+        )}
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-5 py-6 lg:px-8">{children}</main>
       </div>
     </div>
@@ -105,11 +116,12 @@ function ContextBar() {
           <select
             value={world ?? ""}
             onChange={(e) => setWorld(e.target.value)}
-            className="rounded-md border border-hair bg-surface px-2 py-1 font-mono text-[12.5px] text-ink"
+            className="max-w-[280px] rounded-md border border-hair bg-surface px-2 py-1 font-mono text-[12.5px] text-ink"
           >
             {(datasets ?? []).map((d) => (
               <option key={d.world_id} value={d.world_id}>
                 {d.world_id}
+                {d.name ? ` · ${d.name}` : ""}
                 {d.runs.length ? "" : " (no runs)"}
               </option>
             ))}

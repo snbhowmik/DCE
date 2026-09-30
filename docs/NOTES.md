@@ -393,6 +393,12 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Consequences:** swapping to Ollama / llama.cpp / another host is a config change (`base_url`, `model`, `api_key_env`).
 - **Refs:** D-049, D-050; ARCH §5.11, §8; PRD FR-26–29, NFR-6; T9.1, T9.2
 
+### D-054 · Hands-on what-if engine and native RHEL 8.10 deployment · 2026-09-30 · accepted
+- **Context:** the owner will deploy on RHEL 8.10 so judges can use the product themselves, within a 4-hour window. Full runs take 25–50 s and about 930 MB; judges need answers in seconds.
+- **Decision:** (1) `run_modes` pickles the mode-independent upstream stage per dataset (`data/processed/<hash>/upstream.pkl`, written only by our pipeline). `dce.scenario.Levers` (demand ± by channel or account from a week, capacity ± over a week range, co-man on/off, budget ±, strategy incl. CUSTOM weights) edits *copies* of the forecast and capacity sample paths and the marketing plan; `plan_stage` then re-solves and stress-tests (≈0.5–1.3 s). Results persist as `kind="scenario"` runs with the parent plan run, levers and a plain-language change list; `latest_runs` ignores them. Forecast models are never refit and never see the strategy (P1). (2) T12.1's Docker Compose is replaced by `deploy/install.sh`: uv-managed CPython 3.12, Node 20 from AppStream, systemd units (`dce-api`, `dce-web`), nginx on :80 with rate limits on what-ifs and re-runs, SELinux boolean and firewalld; `deploy/refresh-worlds.sh` ingests new drops and precomputes. (3) `config/worlds.yaml` holds display names for worlds; only the UI reads it.
+- **Consequences:** no container runtime is needed on the host. Scenario levers cover the ARCH §5.11 lever list except new candidate accounts (T7.1) and SKU eligibility; the natural-language parser (rest of T9.3) is not built yet.
+- **Refs:** ARCH §5.11, §6; PRD FR-28, US5, NFR-1; T9.3, T10.7, T12.1
+
 ---
 
 ## 2. Assumptions register
@@ -818,4 +824,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** none (D-051)
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** T10.5 onboarding form, T10.6 ranked mitigations and T10.7 scenario box wait on T7.1, T6.2–T6.3 and T9.3. No frontend unit tests yet.
+
+### TL-038 · T9.3 (executor) + T10.7 + T12.1 (as D-054) · 2026-09-30
+- **Agent/author:** Claude Code
+- **Summary:** `dce.scenario` (`Levers`, `apply_levers`), upstream cache and `run_scenario` in `dce.service`, `POST /api/v1/scenarios` (201; 404 unknown world; 422 bad strategy, lever range or account), world names in `/datasets`. Scenarios screen is now a workbench (levers, CUSTOM weight sliders, presets, base-vs-scenario deltas in pp / ₹ / kg, alerts, session history, "open in all screens" with a scenario banner). Payload KPIs tolerate plans without co-man or spend tables. RHEL 8.10 deployment kit in `deploy/`; `make refresh`; README deploy section; Next proxy timeout raised for first-time scenarios.
+- **Files touched:** `backend/dce/{scenario,service,payload,api/app}.py`, `backend/dce/tests/test_api.py`, `config/worlds.yaml`, `deploy/*`, `frontend/{app/scenarios/page.tsx,components/Shell.tsx,lib/*,next.config.ts}`, `Makefile`, `README.md`
+- **Tests:** 2 added / 273 passing (scenario re-solves as a child run, capacity lever applied, forecast hash unchanged, cached upstream not mutated, base runs not replaced; error mapping). All 7 worlds re-precomputed with caches; a scenario via the proxy took 1.3 s; workbench driven in headless Chrome (preset → result in 0.4 s).
+- **Decisions made:** D-054
+- **Deviations from ARCH:** T12.1 native systemd deployment instead of Docker Compose (D-054)
+- **Known issues / follow-ups:** `deploy/install.sh` not yet run on a real RHEL 8.10 host. NL parser (T9.3 remainder), T6.2–T6.3, T7.1 open.
 
