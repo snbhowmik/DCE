@@ -113,7 +113,7 @@ export function FanChart({
           </g>
         ))}
         {/* alert spans */}
-        {spans.map((sp) => {
+        {spans.map((sp, si) => {
           const a = weeks.indexOf(sp.start);
           const b = weeks.indexOf(sp.end);
           if (a < 0 || b < 0) return null;
@@ -127,7 +127,7 @@ export function FanChart({
                 height={Hh}
                 fill={sp.tone === "critical" ? "var(--critical-wash)" : "var(--warning-wash)"}
               />
-              <text x={x(a) - half + 4} y={M.top + 12} fontSize={11} fontWeight={500} fill={sp.tone === "critical" ? "var(--critical-text)" : "var(--warning-text)"}>
+              <text x={x(a) - half + 4} y={M.top + 12 + (si % 3) * 13} fontSize={11} fontWeight={500} fill={sp.tone === "critical" ? "var(--critical-text)" : "var(--warning-text)"}>
                 {sp.label}
               </text>
             </g>

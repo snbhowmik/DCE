@@ -411,6 +411,12 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Consequences:** M2/S1 show little effect while spend response is unidentified; all 24 world briefs are now LLM-written and grounded.
 - **Refs:** ARCH §5.9, §5.11; PRD FR-23–27; T6.2, T6.3, T9.2
 
+### D-057 · "Ask the plan" chat · 2026-09-30 · accepted
+- **Context:** the owner wants the AI to be usable as a chat, not only a brief.
+- **Decision:** `POST /api/v1/chat` on the run being viewed. A deterministic parser (regex, no LLM) turns common what-if phrasings into `Levers` (capacity ± over weeks, D2C/B2B demand ±, an account by id or type — "the distributor" = largest active account of that type — doubling/halving/±N%, no co-man, budget ±, strategy switch, "from week/month N"); the scenario is re-solved and the reply compares base and scenario with numbers computed in code. Other questions go to the LLM with a fact sheet (brief digest + per-account allocation + top-RES regions) and the last 6 turns; the answer must pass the NumberGroundingValidator (one retry), otherwise the reply quotes the most relevant facts. Unparseable "what if" questions get the list of supported levers. Actions the LLM suggests are restricted to the mitigation playbook.
+- **Consequences:** chat works with no LLM (what-ifs + fact quotes). Free-form LLM what-if parsing to JSON (D-049 (3)) is not needed for the supported levers.
+- **Refs:** IDEATION P4; ARCH §5.11; PRD FR-28, US5; D-049, D-053; T9.3
+
 ---
 
 ## 2. Assumptions register
@@ -863,4 +869,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-056
 - **Deviations from ARCH:** none
 - **Known issues / follow-ups:** chat-style assistant ("Ask the plan") requested by the owner, not built yet; NL what-if parsing still open (T9.3 remainder).
+
+### TL-041 · T9.3 (chat + parser) · 2026-09-30
+- **Agent/author:** Claude Code
+- **Summary:** `dce.ai.chat` (`parse_whatif`, `compare_reply`, `fact_sheet`, `reply`), `POST /api/v1/chat`; `ChatDock` drawer on every screen (suggestions, chat bubbles, source label "AI answer · numbers checked" / "re-solved by the optimizer" / "quoted from the plan", "Open scenario in all screens"). Fixed an effect returning `scrollIntoView`'s Promise; staggered overlapping alert labels on the fan chart. Aligned `floor_violations()` with the property test at `SLACK_REPORT_KG = 1e-4` (a 1e-6 threshold counted solver noise, making the test flaky).
+- **Files touched:** `backend/dce/{ai/chat,api/app,optimize/lp}.py`, `backend/dce/tests/{test_api,test_optimize_properties}.py`, `frontend/{components/ChatDock.tsx,components/Shell.tsx,components/charts/FanChart.tsx,lib/api.ts}`
+- **Tests:** 2 added / 280 passing (twice). Live on world_06: distributor what-if re-solved in 0.5 s; a "why" question answered by gpt-oss-20b in 0.9 s and grounded.
+- **Decisions made:** D-057
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** T9.3's 15-prompt `tests/scenarios.yaml` acceptance set not written (5 phrasings tested).
 

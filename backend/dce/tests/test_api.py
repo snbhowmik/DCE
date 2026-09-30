@@ -227,3 +227,48 @@ def test_mitigations_endpoint_structure_and_lead_time(
             assert m["rank"] >= 1 and m["levers"]
         if m["status"] == "too_late":
             assert m["lead_time_weeks"] > a["weeks_until"]
+
+
+def test_chat_parser_phrasings() -> None:
+    from dce.ai.chat import parse_whatif
+
+    p = {
+        "run": {"months": [{"n_weeks": 4}, {"n_weeks": 4}, {"n_weeks": 5}], "accounts": ["ACC-DIST-1"]},
+        "accounts": [{"account_id": "ACC-DIST-1", "in_plan": True, "committed_kg_per_month": 900,
+                      "aqs": {"account_type": "distributor"}}],
+    }  # fmt: skip
+    assert parse_whatif("What if the distributor doubles its order from month 2?", p) == {
+        "from_week": 5, "capacity_from_week": 5, "account_id": "ACC-DIST-1", "account_demand_pct": 100.0,
+    }  # fmt: skip
+    assert parse_whatif("what if capacity drops 30% in weeks 3–6", p)["capacity_pct"] == -30.0
+    assert parse_whatif("suppose we lose co-manufacturing", p) == {"coman_available": False}
+    assert parse_whatif("budget up 20% and switch to growth", p) == {
+        "budget_pct": 20.0,
+        "mode": "GROWTH",
+    }
+    assert parse_whatif("Why is the plan short in March?", p) == {}
+
+
+def test_chat_api_whatif_question_and_unsupported(
+    client: TestClient,
+    runs: tuple[Any, list[Any]],  # noqa: F811
+) -> None:
+    rid = runs[1][0].run_id
+    ask = lambda q: client.post(  # noqa: E731
+        "/api/v1/chat", json={"run_id": rid, "messages": [{"role": "user", "content": q}]}
+    )
+    r = ask("what if capacity drops 40% from week 2?").json()
+    assert r["source"] == "rules" and r["scenario"]["run_id"]
+    assert "capacity -40%" in r["reply"] and "→" in r["reply"]
+    r = ask("Which accounts are short?").json()
+    assert r["source"] == "facts" and r["note"] == "no LLM configured"  # tests never call an LLM
+    assert ask("what if it rains").json()["source"] == "rules"
+    bad = {"run_id": rid, "messages": [{"role": "assistant", "content": "hi"}]}
+    assert client.post("/api/v1/chat", json=bad).status_code == 422
+    assert (
+        client.post(
+            "/api/v1/chat",
+            json={"run_id": "run_x", "messages": [{"role": "user", "content": "hi"}]},
+        ).status_code
+        == 404
+    )

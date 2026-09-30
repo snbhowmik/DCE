@@ -70,6 +70,15 @@ export const api = {
     post<OnboardingResult>("/onboarding/simulate", body),
   mitigations: (runId: string) =>
     get<{ run_id: string; seconds: number; mitigations: import("./types").Mitigation[] }>(`/runs/${runId}/mitigations`),
+  chat: (run_id: string, messages: { role: "user" | "assistant"; content: string }[]) =>
+    post<{
+      run_id: string;
+      reply: string;
+      source: "llm" | "rules" | "facts";
+      model: string | null;
+      note?: string;
+      scenario?: { run_id: string; changes: string[]; mode: string; seconds: number };
+    }>("/chat", { run_id, messages }),
   startRun: (world_id: string, modes: string[]) =>
     post<{ job_id: string; status: string }>("/runs", { world_id, modes }),
   job: (jobId: string) =>

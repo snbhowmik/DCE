@@ -10,7 +10,7 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from dce.optimize.inputs import ModeParams, PlanInputs
-from dce.optimize.lp import solve_allocation
+from dce.optimize.lp import SLACK_REPORT_KG, solve_allocation
 from dce.optimize.stress import PlanDecision, Scenarios, stress_test
 from dce.tests.test_optimize_lp import months
 
@@ -97,8 +97,8 @@ def test_floors_hold_when_feasible_else_reported(case: tuple[PlanInputs, ModePar
         for m in range(inp.M)
     )
     if feasible:
-        assert (res.floor_slack <= 1e-4).all()
-    assert (res.floor_slack > 1e-4).sum() == res.floor_violations().height
+        assert (res.floor_slack <= SLACK_REPORT_KG).all()
+    assert (res.floor_slack > SLACK_REPORT_KG).sum() == res.floor_violations().height
 
 
 @SETTINGS

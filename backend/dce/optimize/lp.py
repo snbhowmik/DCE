@@ -165,7 +165,10 @@ class PlanResult:
 
     def floor_violations(self) -> pl.DataFrame:
         a = self.allocation()
-        return a.filter(pl.col("floor_slack_kg") > 1e-6)
+        return a.filter(pl.col("floor_slack_kg") > SLACK_REPORT_KG)
+
+
+SLACK_REPORT_KG = 1e-4  # below this a floor slack is solver noise (0.1 g), not a violation
 
 
 def _vals(d: dict[Any, pulp.LpVariable], shape: tuple[int, ...]) -> np.ndarray:

@@ -287,6 +287,45 @@ def onboarding(req: OnboardingRequest, engine: Engine = Depends(get_engine)) -> 
     )
 
 
+class ChatMessage(BaseModel):
+    role: str = Field(pattern="^(user|assistant)$")
+    content: str = Field(min_length=1, max_length=2000)
+
+
+class ChatRequest(BaseModel):
+    run_id: str
+    messages: list[ChatMessage] = Field(min_length=1, max_length=30)
+
+
+@app.post("/api/v1/chat")
+def chat(req: ChatRequest, engine: Engine = Depends(get_engine)) -> dict[str, Any]:
+    """ "Ask the plan": what-ifs are parsed and re-solved; questions are answered from the run's
+    facts by the configured LLM, number-checked (P4)."""
+    from dce.ai.chat import reply
+    from dce.ai.llm import make_client
+    from dce.config import load_app_config
+    from dce.service import run_scenario
+
+    if req.messages[-1].role != "user":
+        raise HTTPException(422, "the last message must be from the user")
+    p = load_payload(engine, req.run_id)
+
+    def run_whatif(lv: Levers) -> tuple[dict[str, Any], dict[str, Any]]:
+        meta = run_scenario(engine, p["run"]["world_id"], lv)
+        return meta, load_payload(engine, meta["run_id"])
+
+    try:
+        out = reply(
+            p,
+            [m.model_dump() for m in req.messages],
+            make_client(load_app_config().get("llm", {})),
+            run_whatif,
+        )
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return {"run_id": req.run_id} | out
+
+
 # ------------------------------------------------------------------ background runs (T8.2)
 
 

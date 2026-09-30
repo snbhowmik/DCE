@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { day, modeLabel, shortHash } from "@/lib/format";
 import { useSelection } from "@/lib/selection";
 import { MODES } from "@/lib/types";
+import { ChatDock } from "./ChatDock";
 import { StatusIcon } from "./ui";
 
 const NAV = [
@@ -74,6 +75,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         )}
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-5 py-6 lg:px-8">{children}</main>
+        <ChatDock />
       </div>
     </div>
   );
