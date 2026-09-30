@@ -68,6 +68,8 @@ export const api = {
   scenario: (world_id: string, levers: Levers) => post<ScenarioResult>("/scenarios", { world_id, levers }),
   onboard: (body: { world_id: string; mode: string; candidate: Record<string, unknown> }) =>
     post<OnboardingResult>("/onboarding/simulate", body),
+  mitigations: (runId: string) =>
+    get<{ run_id: string; seconds: number; mitigations: import("./types").Mitigation[] }>(`/runs/${runId}/mitigations`),
   startRun: (world_id: string, modes: string[]) =>
     post<{ job_id: string; status: string }>("/runs", { world_id, modes }),
   job: (jobId: string) =>

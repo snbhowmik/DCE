@@ -12,15 +12,16 @@ Briefs are cached per run, so a free-tier key is spent at most twice per run.
 from __future__ import annotations
 
 import json
+import os
 from datetime import UTC, datetime
 from typing import Any
 
-from dce.ai.grounding import NumberGroundingValidator, Violation
+from dce.ai.grounding import NumberGroundingValidator, Violation, normalize
 from dce.ai.llm import LLMClient, LLMUnavailable, make_client
 from dce.config import load_app_config
 from dce.store.runs import run_dir
 
-PROMPT_VERSION = "brief-v1"
+PROMPT_VERSION = "brief-v3"
 
 SYSTEM = """You write a short planning brief for the leadership of Biokraft Foods, a \
 capacity-constrained maker of cultivated chicken that sells direct to consumers (D2C) and to \
@@ -30,6 +31,10 @@ Rules:
 - Copy every number exactly as written in the facts, with the same unit and rounding.
 - Never calculate, estimate, add, subtract or compare numbers yourself (no "2x", no totals).
 - Plain, direct business English. No markdown other than the format below.
+- The headline states the single most important risk or decision for leadership: an alert if
+  there is one (shortfall first, then surplus), otherwise the service level the plan achieves.
+- Findings cover outcome (revenue, fill), risk (alerts, shortfall chance, waste) and what the plan
+  does (allocation, co-manufacturing, spend). Actions are concrete and follow from the facts.
 Answer in exactly this format:
 HEADLINE: <one sentence>
 FINDINGS:
@@ -157,7 +162,7 @@ def parse(text: str) -> dict[str, Any] | None:
             cur = findings
         elif up.startswith("ACTIONS"):
             cur = actions
-        elif s[:1] in "-*•" and cur is not None:
+        elif s[:1] in "-*•" and cur is not None and s[1:].strip():
             cur.append(s[1:].strip())
     if not head or not findings:
         return None
@@ -242,7 +247,7 @@ def generate(p: dict[str, Any], client: LLMClient | None) -> dict[str, Any]:
                     f"\n\nYour previous answer used numbers that are not in the facts: {bad}. "
                     "Rewrite it using only numbers copied exactly from the facts."
                 )
-            answer = client.complete(SYSTEM, prompt)
+            answer = normalize(client.complete(SYSTEM, prompt))
             log.append({"prompt": prompt, "response": answer})
             brief = parse(answer)
             if brief is None:
@@ -274,15 +279,20 @@ def cached_brief(p: dict[str, Any], client: LLMClient | None = None) -> dict[str
         client = make_client(load_app_config().get("llm", {}))
     name = client.name if client else None
     path = run_dir(p["run"]["run_id"]) / "narrative.json"
-    if path.exists():
-        cached = json.loads(path.read_text())
-        if (
-            cached.get("prompt_version") == PROMPT_VERSION
-            and cached.get("model") == name
-            and not cached.get("transient")
-        ):
-            return cached
+    try:
+        cached = json.loads(path.read_text()) if path.exists() else None
+    except ValueError:  # partial / concurrent write: regenerate
+        cached = None
+    if (
+        cached is not None
+        and cached.get("prompt_version") == PROMPT_VERSION
+        and cached.get("model") == name
+        and not cached.get("transient")
+    ):
+        return cached
     brief = generate(p, client)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(brief, ensure_ascii=False, indent=1))
+    tmp = path.with_suffix(f".{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(brief, ensure_ascii=False, indent=1))
+    tmp.replace(path)  # atomic: readers never see a half-written brief
     return brief

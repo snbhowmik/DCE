@@ -405,6 +405,12 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Consequences:** AQS for the candidate is not scored yet (no history); tolerances are initial values, to be tuned only with TN entries.
 - **Refs:** ARCH §5.10, §9.8; PRD FR-21, US4; T7.1, T10.5
 
+### D-056 · Mitigation ranking; Groq model; grounding normalisation · 2026-09-30 · accepted
+- **Context:** T6.2–T6.3 need a concrete impact and scoring rule; the configured Groq model was retired (HTTP 404); the live model writes dates with Unicode hyphens.
+- **Decision:** (1) `config/mitigations.yaml` maps M1–M6 (shortfall) and S1–S3 (surplus) to what-if levers with lead time, harm and reversibility. Per alert: infeasible if lead time > weeks until the alert (`too_late`); M3 is reported as optimized inside every plan, M4 as the onboarding simulator. Others are re-solved on the run's forecast; benefit = expected shortfall kg removed (surplus: expected waste avoided), cost = contribution given up, score = benefit ÷ ((max(cost, 0) + harm_weight·harm) / 1e5); no benefit → `no_benefit`, not ranked; act-by = alert week − lead time. Cached per run. (2) LLM: `openai/gpt-oss-20b` on Groq with `reasoning_effort: low`, 1200 output tokens. (3) The validator normalises Unicode dashes and accepts month-name dates that match payload weeks; signed numbers are checked. Brief cache writes are atomic.
+- **Consequences:** M2/S1 show little effect while spend response is unidentified; all 24 world briefs are now LLM-written and grounded.
+- **Refs:** ARCH §5.9, §5.11; PRD FR-23–27; T6.2, T6.3, T9.2
+
 ---
 
 ## 2. Assumptions register
@@ -848,4 +854,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-055
 - **Deviations from ARCH:** candidate AQS not computed (no history)
 - **Known issues / follow-ups:** T6.2–T6.3 (ranked mitigations) and the natural-language scenario parser remain.
+
+### TL-040 · T6.2 + T6.3 + T10.6; regenerated worlds · 2026-09-30
+- **Agent/author:** Claude Code
+- **Summary:** Regenerated worlds (8 drops incl. world_02_drop2) ingested with 0 errors and precomputed by the owner (`make refresh`); display names for worlds 1–3 and their drops in `config/worlds.yaml` (4–6 pending, names only). `dce.mitigate.rank` + `service.mitigations_for` + `GET /runs/{id}/mitigations`; Alerts screen shows ranked mitigations per alert with act-by, cost, harm and "Try it" (re-solve as scenario). `dce narrate` pre-writes briefs (also run by `deploy/refresh-worlds.sh`). LLM switched to gpt-oss-20b; prompt v3 (headline leads with the top risk); grounding fixes.
+- **Files touched:** `config/{mitigations,worlds,app}.yaml`, `backend/dce/{mitigate/rank,service,api/app,cli,ai/*}.py`, tests, `frontend/{components/Mitigations.tsx,app/alerts/page.tsx,lib/*}`, `deploy/refresh-worlds.sh`
+- **Tests:** 3 added / 278 passing (mitigation structure + lead-time rule; unicode dashes and month-name dates; signed numbers checked, identifiers skipped)
+- **Decisions made:** D-056
+- **Deviations from ARCH:** none
+- **Known issues / follow-ups:** chat-style assistant ("Ask the plan") requested by the owner, not built yet; NL what-if parsing still open (T9.3 remainder).
 

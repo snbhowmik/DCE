@@ -157,10 +157,19 @@ def get_run(run_id: str, engine: Engine = Depends(get_engine)) -> dict[str, Any]
 def get_section(run_id: str, section: str, engine: Engine = Depends(get_engine)) -> dict[str, Any]:
     if section == "narrative":
         return narrative(run_id, engine)
+    if section == "mitigations":
+        return mitigations(run_id, engine)
     if section not in SECTIONS:
         raise HTTPException(404, f"unknown section {section!r}; one of {sorted(SECTIONS)}")
     p = load_payload(engine, run_id)
     return {"run_id": run_id, "dataset_hash": p["run"]["dataset_hash"], section: p[section]}
+
+
+def mitigations(run_id: str, engine: Engine) -> dict[str, Any]:
+    from dce.service import mitigations_for
+
+    load_payload(engine, run_id)
+    return mitigations_for(engine, run_id)
 
 
 def narrative(run_id: str, engine: Engine) -> dict[str, Any]:

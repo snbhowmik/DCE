@@ -4,7 +4,8 @@
 import { ProbChart } from "@/components/charts/ProbChart";
 import { Decide } from "@/components/Decide";
 import { RunGate } from "@/components/RunGate";
-import { Badge, Card, Num, PageHeader, StatusIcon, StatusPill, Upcoming } from "@/components/ui";
+import { Mitigations } from "@/components/Mitigations";
+import { Badge, Card, Num, PageHeader, StatusIcon, StatusPill } from "@/components/ui";
 import { day, kg, kgFull, pct, shortDay } from "@/lib/format";
 import type { Payload } from "@/lib/types";
 
@@ -103,6 +104,7 @@ function Alerts({ p }: { p: Payload }) {
           );
         })}
       </div>
+      <Mitigations p={p} />
       <Card title="Weekly risk" subtitle="Probability over the simulated futures, per week of the horizon.">
         <ProbChart
           weeks={w.map((x) => x.week_start)}
@@ -175,10 +177,7 @@ function Alerts({ p }: { p: Payload }) {
           </tbody>
         </table>
       </Card>
-      <Upcoming phase="Phase 6 · T6.2–T6.3" title="Ranked mitigations with quantified impact">
-        Each feasible mitigation will be applied as a lever, re-solved and stress-tested; the list is then ranked by shortfall
-        reduced per rupee (with harm and reversibility) and every option gets its act-by date.
-      </Upcoming>
+
     </div>
   );
 }

@@ -164,6 +164,29 @@ def precompute_cmd(
     raise typer.Exit(1 if failed else 0)
 
 
+@app.command("narrate")
+def narrate_cmd(
+    pause: float = typer.Option(2.5, help="seconds between LLM calls (rate limits)"),
+) -> None:
+    """Write (or reuse) the planning brief for the latest run of every world × strategy."""
+    import time
+
+    from dce.ai.narrative import cached_brief
+    from dce.service import latest_runs, payload_path
+    from dce.store.db import make_engine
+
+    engine = make_engine()
+    for run, world in latest_runs(engine):
+        p = payload_path(engine, run.run_id)
+        if p is None:
+            continue
+        t0 = time.time()
+        b = cached_brief(json.loads(p.read_text()))
+        typer.echo(f"{world:<16} {run.mode:<14} {b['source']:<8} {b.get('fallback_reason') or ''}")
+        if time.time() - t0 > 0.5:
+            time.sleep(pause)
+
+
 contract_app = typer.Typer(no_args_is_help=True, help="Data contract tools.")
 app.add_typer(contract_app, name="contract")
 

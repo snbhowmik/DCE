@@ -35,6 +35,20 @@ NUM = re.compile(
 )
 DATE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 LIST_MARK = re.compile(r"(?m)^\s*(?:[-*•]|\d+[.)])\s+")
+DASHES = str.maketrans({c: "-" for c in "\u2010\u2011\u2012\u2013\u2014\u2212"})
+MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
+_MON = r"(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?"
+DMY = re.compile(rf"\b(\d{{1,2}})\s+{_MON}\s+(\d{{4}})\b", re.I)
+MDY = re.compile(rf"\b{_MON}\s+(\d{{1,2}}),?\s+(\d{{4}})\b", re.I)
+
+
+def normalize(text: str) -> str:
+    """Unicode dashes → '-', so '2024‑12‑30' reads as a date and '−₹5 L' as a sign."""
+    return text.translate(DASHES).replace("\u202f", " ").replace("\u00a0", " ")
+
+
+def _iso(y: str, mon: str, d: str) -> str:
+    return f"{int(y):04d}-{MONTHS.index(mon[:3].lower()) + 1:02d}-{int(d):02d}"
 
 
 @dataclass(frozen=True)
@@ -74,8 +88,14 @@ class NumberGroundingValidator:
         return bool(hi > lo)
 
     def check(self, text: str) -> list[Violation]:
-        text = LIST_MARK.sub("", text)
+        text = LIST_MARK.sub("", normalize(text))
         out: list[Violation] = []
+        for rx, order in ((DMY, (3, 2, 1)), (MDY, (3, 1, 2))):
+            for m in rx.finditer(text):
+                iso = _iso(*(m.group(i) for i in order))
+                if iso not in self.strings:
+                    out.append(Violation(m.group(0), "date not in payload"))
+            text = rx.sub(" ", text)
         for d in DATE.findall(text):
             if d not in self.strings:
                 out.append(Violation(d, "date not in payload"))
@@ -83,7 +103,8 @@ class NumberGroundingValidator:
         for m in NUM.finditer(text):
             start = m.start()
             prev = text[start - 1] if start else " "
-            if prev.isalnum() or prev in "_-/.":
+            before = text[start - 2] if start >= 2 else " "
+            if prev.isalnum() or prev in "_/." or (prev == "-" and before.isalnum()):
                 continue  # part of an identifier / version / ratio label
             raw, unit = m.group("num"), (m.group("unit") or "")
             nxt = text[m.end() : m.end() + 1]

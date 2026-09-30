@@ -209,3 +209,21 @@ def test_onboarding_api_declines_oversized_and_validates(client: TestClient) -> 
     assert (
         client.post("/api/v1/onboarding/simulate", json=body | {"world_id": "x"}).status_code == 404
     )
+
+
+def test_mitigations_endpoint_structure_and_lead_time(
+    client: TestClient,
+    runs: tuple[Any, list[Any]],  # noqa: F811
+) -> None:
+    """T6.3: every alert gets catalog rows; infeasible-by-lead-time ones are never ranked."""
+    rid = runs[1][0].run_id
+    out = client.get(f"/api/v1/runs/{rid}/mitigations").json()
+    alerts = client.get(f"/api/v1/runs/{rid}/risk").json()["risk"]["alerts"]
+    assert {m["alert"] for m in out["mitigations"]} == set(range(len(alerts)))
+    for m in out["mitigations"]:
+        a = alerts[m["alert"]]
+        if m["status"] == "ranked":
+            assert (m["lead_time_weeks"] or 0) <= a["weeks_until"] and m["risk_removed_kg"] > 0
+            assert m["rank"] >= 1 and m["levers"]
+        if m["status"] == "too_late":
+            assert m["lead_time_weeks"] > a["weeks_until"]

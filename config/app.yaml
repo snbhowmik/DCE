@@ -18,12 +18,14 @@ llm:
   # With no key the template brief is used; nothing else changes.
   provider: openai_compatible        # none | openai_compatible
   base_url: https://api.groq.com/openai/v1
-  model: llama-3.1-8b-instant        # any chat model id the endpoint serves
+  model: openai/gpt-oss-20b          # any chat model id the endpoint serves (GET /models)
   api_key_env: GROQ_API_KEY
   timeout_s: 30
   max_retries: 2
-  max_output_tokens: 450
+  max_output_tokens: 1200           # reasoning models spend part of this before answering
   temperature: 0.2
+  extra:                            # passed through in the request body
+    reasoning_effort: low
 forecast:
   quantiles: [0.1, 0.5, 0.9]
   backtest:

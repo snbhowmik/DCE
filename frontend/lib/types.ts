@@ -30,6 +30,27 @@ export interface Levers {
   budget_pct?: number;
 }
 
+export interface Mitigation {
+  alert: number;
+  alert_kind: "breach" | "surplus";
+  alert_start: string;
+  id: string;
+  name: string;
+  effect: string;
+  reversible: string;
+  harm: number;
+  lead_time_weeks: number | null;
+  status: "ranked" | "no_benefit" | "too_late" | "not_applicable" | "in_plan";
+  act_by?: string;
+  risk_removed_kg?: number;
+  cost_inr?: number;
+  delta_b2b_fill?: number;
+  delta_d2c_fill?: number;
+  score?: number;
+  rank?: number;
+  levers?: Levers;
+}
+
 export interface OnboardingOption {
   start_month: number;
   ramp: "full" | "50_100" | "33_66_100";

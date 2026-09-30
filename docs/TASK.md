@@ -140,8 +140,8 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 ## Phase 6 — Risk and mitigation
 
 - [x] **T6.1 Breach + surplus detector** (weekly P_breach from paths; mode thresholds). *Depends:* T2.6, T3.3
-- [ ] **T6.2 Mitigation catalog** (`config/mitigations.yaml` M1–M6 with lead times, cost, harm, reversibility). *Depends:* T6.1
-- [ ] **T6.3 Impact via re-solve + ranking + act-by dates**
+- [x] **T6.2 Mitigation catalog** (`config/mitigations.yaml` M1–M6 with lead times, cost, harm, reversibility). *Depends:* T6.1
+- [x] **T6.3 Impact via re-solve + ranking + act-by dates**
   *Accept:* infeasible-by-lead-time mitigations are excluded (test); ranking is deterministic.
   *Depends:* T6.2, T5.7
 
@@ -174,7 +174,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 - [x] **T10.3 Allocation plan** (tables, spend, mode compare, baseline compare, stress results)
 - [x] **T10.4 Markets** (region scorecards with RES breakdown)
 - [x] **T10.5 B2B accounts + onboarding simulator**
-- [~] **T10.6 Alerts & mitigations**
+- [x] **T10.6 Alerts & mitigations**
 - [x] **T10.7 Scenarios**
 - [x] **T10.8 Decision log** (accept/reject with reason)
 - [x] **T10.9 Data & model health** (validation, backtests, coverage, anomalies)

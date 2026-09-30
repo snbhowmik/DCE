@@ -21,7 +21,7 @@ from sqlmodel import Session, select
 
 from dce.ingest import load_dataset, load_history_window
 from dce.ingest.core import processed_path
-from dce.payload import build_payload, write_payload
+from dce.payload import build_payload, clean, write_payload
 from dce.runner import UpstreamOutputs, build_run_config, plan_stage, upstream_stage
 from dce.scenario import Levers, apply_levers
 from dce.store.models import Dataset, Run, RunArtifact
@@ -172,6 +172,40 @@ def load_upstream(dataset_hash: str, tables: dict[str, Any], window: Any) -> Ups
             _upstream.pop(next(iter(_upstream)))
         _upstream[dataset_hash] = up
         return up
+
+
+def solver_for(engine: Engine, world_id: str) -> Any:
+    """`solve(levers) -> PipelineOutputs` on the world's cached upstream (nothing persisted)."""
+    ds = dataset_for_world(engine, world_id)
+    tables = load_dataset(ds.dataset_hash)
+    window = load_history_window(ds.dataset_hash, tables)
+    up0 = load_upstream(ds.dataset_hash, tables, window)
+
+    def solve(lv: Levers) -> Any:
+        up, t2 = apply_levers(lv, up0, tables)
+        return plan_stage(
+            t2, window, build_run_config(lv.mode, None, lv.mode_overrides), up, lv.candidate
+        )
+
+    return solve
+
+
+def mitigations_for(engine: Engine, run_id: str) -> dict[str, Any]:
+    """Ranked mitigations for a run's alerts, cached next to its payload."""
+    from dce.mitigate.rank import evaluate
+
+    path = run_dir(run_id) / "mitigations.json"
+    if path.exists():
+        return json.loads(path.read_text())
+    pp = payload_path(engine, run_id)
+    if pp is None:
+        raise LookupError(f"no payload for run {run_id!r}")
+    p = json.loads(pp.read_text())
+    t0 = time.time()
+    out = evaluate(p, solver_for(engine, p["run"]["world_id"]))
+    out |= {"run_id": run_id, "seconds": round(time.time() - t0, 1)}
+    path.write_text(json.dumps(clean(out)))
+    return out
 
 
 def run_scenario(engine: Engine, world_id: str, levers: Levers) -> dict[str, Any]:

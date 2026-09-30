@@ -1,5 +1,8 @@
-# Display names for data drops (owner-provided themes of the regenerated worlds). UI only:
-# nothing in the pipeline reads this file, so names never influence forecasts or plans (P1/P2).
+# Display names for data drops (owner-provided themes). UI only: nothing in the pipeline reads this
+# file, so names never influence forecasts or plans (P1/P2). Only names go here, never generator settings.
 world_01: High volatility & high risk
+world_01_drop2: High volatility & high risk (drop 2)
 world_02: Prime standing & operational scale
+world_02_drop2: Prime standing & operational scale (drop 2)
 world_03: Viral hypergrowth & demand surges
+# world_04 / world_05 / world_06: names pending from the data-generation side

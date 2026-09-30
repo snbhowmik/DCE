@@ -9,6 +9,7 @@ for w in data/incoming/*/; do
   echo "ingest $w"; uv run dce ingest "$w" >/dev/null || { echo "  !! validation failed for $w (see data/processed/*/validation_report.json)"; }
 done
 uv run dce precompute
+uv run dce narrate || true   # AI briefs (template if no LLM key)
 if [ "${1:-}" != "--no-restart" ] && systemctl list-unit-files dce-api.service >/dev/null 2>&1; then
   sudo systemctl restart dce-api || true
 fi

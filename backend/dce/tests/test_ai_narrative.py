@@ -217,3 +217,16 @@ def test_cache_reuses_and_refreshes(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     retry = FakeClient([GOOD])
     retry.name = "flaky@local"
     assert cached_brief(p, retry)["source"] == "llm"  # transient failure not reused
+
+
+def test_validator_handles_unicode_dashes_and_month_names() -> None:
+    v = NumberGroundingValidator(payload())
+    assert v.check("Surplus from week of 2025‑01‑13, peak 76.0%.") == []
+    assert v.check("Surplus from 13 Jan 2025 (Jan 13, 2025).") == []
+    assert {x.token for x in v.check("Surplus from 20 Jan 2025.")} == {"20 Jan 2025"}
+
+
+def test_signed_numbers_are_checked_but_ids_are_not() -> None:
+    v = NumberGroundingValidator(payload())
+    assert {x.token for x in v.check("Waste changes by -684 kg.")} == {"684 kg"}
+    assert v.check("Partner COMAN-PUN-01 and ACC-REST-502.") == []

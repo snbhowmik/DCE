@@ -51,6 +51,7 @@ class OpenAICompatibleClient:
     max_retries: int = 2
     max_output_tokens: int = 450
     temperature: float = 0.2
+    extra: dict[str, Any] = field(default_factory=dict)  # endpoint-specific body fields
     transport: httpx.BaseTransport | None = field(default=None, repr=False)  # tests: mock
 
     @property
@@ -69,6 +70,7 @@ class OpenAICompatibleClient:
             ],
             "temperature": self.temperature,
             "max_tokens": self.max_output_tokens,
+            **self.extra,
         }
         url = self.base_url.rstrip("/") + "/chat/completions"
         last = "no attempt"
@@ -124,4 +126,5 @@ def make_client(cfg: dict[str, Any]) -> LLMClient | None:
         max_retries=int(cfg.get("max_retries", 2)),
         max_output_tokens=int(cfg.get("max_output_tokens", 450)),
         temperature=float(cfg.get("temperature", 0.2)),
+        extra=dict(cfg.get("extra") or {}),
     )
