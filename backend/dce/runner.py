@@ -16,6 +16,12 @@ from dce.capacity.model import CapacityForecast, capacity_forecast
 from dce.config import load_app_config, load_scoring_config
 from dce.forecast.run import DatasetForecast, forecast_dataset
 from dce.metrics.scores import EvidenceScores, evidence_scores
+from dce.onboarding.simulate import (
+    Candidate,
+    add_candidate,
+    candidate_b2b_paths,
+    candidate_weekly,
+)
 from dce.optimize.baselines import Comparison, compare_with_baselines
 from dce.optimize.coman import CoManInputs, already_active_partners
 from dce.optimize.explain import Explanation, explain
@@ -136,12 +142,16 @@ def plan_stage(
     window: tuple[date, date],
     run: RunConfig,
     up: UpstreamOutputs,
+    candidate: Candidate | None = None,
 ) -> PipelineOutputs:
+    """Plan one mode on shared upstream outputs; `candidate` adds a prospective B2B account."""
     opt = run.app.get("optimize", {})
     mode = ModeParams.from_mode_config(run.mode, run.mode_config, opt)
     profile = run.mode_config.get("onboarding_aqs_weights") or "balanced"
     scores = evidence_scores(tables, window, run.scoring, profile)
     inputs = build_inputs(tables, up.forecast, up.capacity, mode, opt)
+    if candidate is not None:
+        inputs = add_candidate(inputs, candidate)
     spend = build_spend_inputs(tables, inputs, up.responses, scores, run.app)
     coman = CoManInputs(
         partners=up.capacity.partners,
@@ -158,6 +168,8 @@ def plan_stage(
     )
     explanation = explain(plan)
     scenarios = build_scenarios(inputs, up.forecast, up.capacity, coman.partners, run.seed)
+    if candidate is not None:
+        scenarios.b2b[-1] = candidate_b2b_paths(candidate, inputs, scenarios.n_paths)[0]
     decision = PlanDecision.from_plan(plan, coman.partners, explanation.duals)
     stress = stress_test(
         decision,
@@ -185,6 +197,7 @@ def plan_stage(
         mode.breach_threshold,
         run.app.get("risk", {}),
         run.seed,
+        None if candidate is None else candidate_weekly(candidate, inputs, up.forecast.horizon),
     )
     return PipelineOutputs(
         run, window, up.forecast, up.capacity, up.responses, scores, mode, inputs, spend, coman,

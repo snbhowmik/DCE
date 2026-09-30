@@ -3,7 +3,8 @@
 // onboarding simulator lands with T7.1 (PRD §8.4, US4).
 import { Sparkfan } from "@/components/charts/Sparkfan";
 import { RunGate } from "@/components/RunGate";
-import { Badge, Card, Num, PageHeader, StatusPill, Upcoming, ZBar } from "@/components/ui";
+import { Onboarding } from "@/components/Onboarding";
+import { Badge, Card, Num, PageHeader, StatusPill, ZBar } from "@/components/ui";
 import { day, fixed, kg, kgFull, pct, regionName } from "@/lib/format";
 import type { Payload } from "@/lib/types";
 
@@ -114,11 +115,7 @@ function Accounts({ p }: { p: Payload }) {
           P{Math.round(Number(cap.q_demand_b2b ?? 0.5) * 100)} of that forecast.
         </p>
       </Card>
-      <Upcoming phase="Phase 7 · T7.1" title="Onboarding simulator">
-        Enter a candidate account (volume, price, penalty, region, earliest start). The engine re-solves the whole horizon with
-        and without it across start months and ramp profiles (full, 50→100%, 33→66→100%) and recommends accept now, accept
-        from month X, phase in, or decline, with revenue, fill-rate and D2C-displacement deltas.
-      </Upcoming>
+      <Onboarding p={p} />
     </div>
   );
 }

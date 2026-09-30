@@ -20,6 +20,7 @@ from sqlalchemy import Engine
 from sqlmodel import Session, select
 
 from dce import __version__
+from dce.onboarding.simulate import Candidate
 from dce.scenario import Levers
 from dce.store.db import make_engine
 from dce.store.models import Dataset, Decision, Recommendation, Run
@@ -250,6 +251,31 @@ def create_scenario(req: ScenarioRequest, engine: Engine = Depends(get_engine)) 
         return run_scenario(engine, req.world_id, req.levers)
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
+
+
+class OnboardingRequest(BaseModel):
+    world_id: str
+    mode: str = "STABILITY"
+    candidate: Candidate
+    earliest_start: int = Field(default=0, ge=0, le=11)
+    max_start: int | None = Field(default=None, ge=0, le=11)
+
+
+@app.post("/api/v1/onboarding/simulate")
+def onboarding(req: OnboardingRequest, engine: Engine = Depends(get_engine)) -> dict[str, Any]:
+    """Accept / defer / phase / decline a candidate B2B account (ARCH §5.10, FR-21)."""
+    from dce.service import dataset_for_world, simulate_onboarding
+
+    try:
+        resolve_mode(req.mode)
+        dataset_for_world(engine, req.world_id)
+    except LookupError as exc:
+        raise HTTPException(404 if "dataset" in str(exc) else 422, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return simulate_onboarding(
+        engine, req.world_id, req.mode, req.candidate, req.earliest_start, req.max_start
+    )
 
 
 # ------------------------------------------------------------------ background runs (T8.2)

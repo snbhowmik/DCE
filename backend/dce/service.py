@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from sqlalchemy import Engine
 from sqlmodel import Session, select
 
@@ -195,7 +196,7 @@ def run_scenario(engine: Engine, world_id: str, levers: Levers) -> dict[str, Any
     )
     t0 = time.time()
     try:
-        res = plan_stage(tables2, window, run, up)
+        res = plan_stage(tables2, window, run, up, levers.candidate)
         meta = {
             "run_id": rec.run_id,
             "world_id": world_id,
@@ -225,4 +226,83 @@ def run_scenario(engine: Engine, world_id: str, levers: Levers) -> dict[str, Any
         "mode": levers.mode,
         "changes": levers.changes(),
         "seconds": round(time.time() - t0, 2),
+    }
+
+
+# ------------------------------------------------------------------ onboarding simulator (T7.1)
+
+
+def _option_metrics(res: Any, cand: Any = None) -> dict[str, Any]:
+    from dce.onboarding.simulate import schedule
+
+    s = res.stress.summary()
+    plan, inp = res.plan, res.inputs
+    n_old = len(inp.accounts) - (1 if cand is not None else 0)
+    commit_old = float(inp.commit[:n_old].sum())
+    out = {
+        "revenue_inr": s["revenue_inr"]["mean"],
+        "contribution_inr": s["contribution_inr"]["mean"],
+        "b2b_fill_rate": s["b2b_fill_rate"]["mean"],
+        "d2c_fill_rate": s["d2c_fill_rate"]["mean"],
+        "p_any_b2b_shortfall": s["any_b2b_shortfall"]["mean"],
+        "waste_kg": s["waste_kg"]["mean"],
+        "b2b_fill_existing": float(plan.y[:n_old].sum()) / commit_old if commit_old else 1.0,
+        "d2c_allocated_kg": float(plan.x.sum()),
+        "n_breach_alerts": sum(a.kind == "breach" for a in res.risk.alerts),
+    }
+    if cand is not None:
+        sch = schedule(cand, inp.M)
+        out["candidate_fill"] = float(plan.y[-1].sum()) / float(sch.sum()) if sch.sum() else 1.0
+        out["capacity_share"] = float(np.max(sch / np.maximum(inp.cap_in, 1e-9)))
+    return out
+
+
+def simulate_onboarding(
+    engine: Engine,
+    world_id: str,
+    mode: str,
+    candidate: Any,
+    earliest_start: int = 0,
+    max_start: int | None = None,
+) -> dict[str, Any]:
+    """Re-solve with the candidate for every start month × ramp; recommend; persist the chosen
+    option as a scenario run so it can be opened on every screen."""
+    from dce.onboarding.simulate import RAMPS, recommend
+
+    ds = dataset_for_world(engine, world_id)
+    tables = load_dataset(ds.dataset_hash)
+    window = load_history_window(ds.dataset_hash, tables)
+    up = load_upstream(ds.dataset_hash, tables, window)
+    run = build_run_config(mode)
+    t0 = time.time()
+    base_res = plan_stage(tables, window, run, up)
+    M = base_res.inputs.M
+    base = _option_metrics(base_res)
+    last = M - 1 if max_start is None else min(max_start, M - 1)
+    options = []
+    for start in range(min(earliest_start, last), last + 1):
+        for ramp in RAMPS:
+            if ramp != "full" and start == M - 1:
+                continue  # a ramp needs at least two months inside the horizon
+            cand = candidate.model_copy(update={"start_month": start, "ramp": ramp})
+            m = _option_metrics(plan_stage(tables, window, run, up, cand), cand)
+            m |= {
+                "start_month": start,
+                "ramp": ramp,
+                "delta": {k: m[k] - base[k] for k in base if isinstance(base[k], float)},
+            }
+            options.append(m)
+    rec = recommend(base, options, mode, base_res.inputs.concentration_cap)
+    best = rec["option"]
+    chosen = candidate.model_copy(update={"start_month": best["start_month"], "ramp": best["ramp"]})
+    scen = run_scenario(engine, world_id, Levers(mode=mode, candidate=chosen))
+    return {
+        "world_id": world_id,
+        "mode": mode,
+        "base": base,
+        "options": options,
+        "recommendation": {k: v for k, v in rec.items() if k != "option"}
+        | {"start_month": best["start_month"], "ramp": best["ramp"]},
+        "run_id": scen["run_id"],
+        "seconds": round(time.time() - t0, 1),
     }

@@ -16,6 +16,7 @@ import polars as pl
 from pydantic import BaseModel, Field
 
 from dce.capacity.model import capacity_quantiles
+from dce.onboarding.simulate import Candidate
 from dce.runner import UpstreamOutputs
 
 PCT = Field(default=0.0, ge=-90.0, le=300.0)
@@ -38,6 +39,7 @@ class Levers(BaseModel):
     capacity_to_week: int = Field(default=13, ge=1, le=13)
     coman_available: bool = True
     budget_pct: float = Field(default=0.0, ge=-100.0, le=200.0)
+    candidate: Candidate | None = None  # prospective B2B account (T7.1)
 
     def changes(self) -> list[str]:
         """Plain-language list of what this scenario changes (for logs and the UI)."""
@@ -61,6 +63,13 @@ class Levers(BaseModel):
             out.append(f"marketing budget {self.budget_pct:+g}%")
         if self.mode_overrides:
             out.append("custom strategy weights")
+        if self.candidate:
+            c = self.candidate
+            ramp = {"full": "full volume", "50_100": "ramp 50→100%", "33_66_100": "ramp 33→66→100%"}
+            out.append(
+                f"new B2B account {c.volume_kg_per_month:,.0f} kg/mo "
+                f"at ₹{c.price_inr_per_kg:,.0f}/kg from month {c.start_month + 1}, {ramp[c.ramp]}"
+            )
         return out
 
 

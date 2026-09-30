@@ -147,7 +147,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 
 ## Phase 7 — Onboarding simulator
 
-- [ ] **T7.1 Candidate simulation** (start months × ramp profiles; recommendation class; deltas; reasons)
+- [x] **T7.1 Candidate simulation** (start months × ramp profiles; recommendation class; deltas; reasons)
   *Accept:* zero-volume candidate equals baseline (test); huge candidate violating concentration → `decline` or `phase` with reason.
   *Depends:* T5.7, T1.4
 
@@ -173,7 +173,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (w
 - [x] **T10.2 Overview** (demand/capacity fan charts, breach/surplus markers, KPIs, narrative)
 - [x] **T10.3 Allocation plan** (tables, spend, mode compare, baseline compare, stress results)
 - [x] **T10.4 Markets** (region scorecards with RES breakdown)
-- [~] **T10.5 B2B accounts + onboarding simulator**
+- [x] **T10.5 B2B accounts + onboarding simulator**
 - [~] **T10.6 Alerts & mitigations**
 - [x] **T10.7 Scenarios**
 - [x] **T10.8 Decision log** (accept/reject with reason)

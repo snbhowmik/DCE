@@ -203,9 +203,13 @@ def assess(
     breach_threshold: float,
     risk_cfg: dict[str, Any],
     seed: int,
+    extra_weekly: np.ndarray | None = None,
 ) -> RiskReport:
-    """Risk of the plan as committed (its co-man and spend decisions included)."""
+    """Risk of the plan as committed (its co-man and spend decisions included). `extra_weekly`
+    adds known contracted demand not in the forecast (an onboarding candidate)."""
     demand = weekly_demand_paths(inp, forecast, decision.d2c_shift)
+    if extra_weekly is not None:
+        demand = demand + extra_weekly[None, :]
     supply = weekly_supply_paths(
         inp,
         capacity,

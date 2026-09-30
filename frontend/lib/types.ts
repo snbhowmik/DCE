@@ -30,6 +30,31 @@ export interface Levers {
   budget_pct?: number;
 }
 
+export interface OnboardingOption {
+  start_month: number;
+  ramp: "full" | "50_100" | "33_66_100";
+  revenue_inr: number;
+  contribution_inr: number;
+  b2b_fill_existing: number;
+  candidate_fill: number;
+  capacity_share: number;
+  p_any_b2b_shortfall: number;
+  d2c_allocated_kg: number;
+  delta: Record<string, number>;
+  acceptable: boolean;
+  issues: string[];
+}
+
+export interface OnboardingResult {
+  world_id: string;
+  mode: string;
+  base: Record<string, number>;
+  options: OnboardingOption[];
+  recommendation: { class: "accept_now" | "accept_from" | "phase" | "decline"; reasons: string[]; start_month: number; ramp: string };
+  run_id: string;
+  seconds: number;
+}
+
 export interface ScenarioResult {
   run_id: string;
   parent_run_id: string | null;

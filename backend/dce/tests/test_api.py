@@ -153,3 +153,59 @@ def test_scenario_errors(client: TestClient) -> None:
         )
         == 422
     )
+
+
+def test_zero_volume_candidate_equals_baseline(runs: tuple[Any, list[Any]]) -> None:  # noqa: F811
+    """ARCH §9.8: onboarding a zero-volume candidate leaves the plan unchanged."""
+    import numpy as np
+
+    from dce.ingest import load_dataset, load_history_window
+    from dce.onboarding.simulate import Candidate
+    from dce.runner import build_run_config, plan_stage
+    from dce.service import dataset_for_world, load_upstream
+
+    engine, _ = runs
+    ds = dataset_for_world(engine, "tiny_world")
+    t = load_dataset(ds.dataset_hash)
+    w = load_history_window(ds.dataset_hash, t)
+    up = load_upstream(ds.dataset_hash, t, w)
+    run = build_run_config("STABILITY")
+    region = up.forecast.series["region_id"].drop_nulls()[0]
+    zero = Candidate.model_construct(
+        volume_kg_per_month=0.0, price_inr_per_kg=600.0, penalty_inr_per_kg=0.0,
+        region_id=region, start_month=0, ramp="full", reach=0.5,
+    )  # fmt: skip
+    base = plan_stage(t, w, run, up)
+    with_zero = plan_stage(t, w, run, up, zero)
+    assert with_zero.plan.objective == pytest.approx(base.plan.objective, rel=1e-9, abs=1e-6)
+    assert np.allclose(with_zero.plan.x, base.plan.x)
+    assert np.allclose(with_zero.plan.y[:-1], base.plan.y)
+
+
+def test_onboarding_api_declines_oversized_and_validates(client: TestClient) -> None:
+    region = client.get("/api/v1/datasets", params={"include_fixtures": True}).json()[0]
+    payload = client.get(f"/api/v1/runs/{region['runs'][0]['run_id']}").json()
+    body: dict[str, Any] = {
+        "world_id": "tiny_world",
+        "mode": "STABILITY",
+        "candidate": {
+            "volume_kg_per_month": 1e5,
+            "price_inr_per_kg": 700,
+            "region_id": payload["run"]["regions"][0],
+        },
+    }
+    r = client.post("/api/v1/onboarding/simulate", json=body)
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["recommendation"]["class"] in ("decline", "phase")
+    assert any("capacity" in x for x in out["recommendation"]["reasons"])
+    assert len(out["options"]) >= 3 and out["run_id"]
+    assert client.get(f"/api/v1/runs/{out['run_id']}").json()["run"]["levers"]["candidate"]
+    bad = body | {"candidate": body["candidate"] | {"volume_kg_per_month": -5}}
+    assert client.post("/api/v1/onboarding/simulate", json=bad).status_code == 422
+    assert (
+        client.post("/api/v1/onboarding/simulate", json=body | {"mode": "NOPE"}).status_code == 422
+    )
+    assert (
+        client.post("/api/v1/onboarding/simulate", json=body | {"world_id": "x"}).status_code == 404
+    )

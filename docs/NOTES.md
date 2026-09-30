@@ -399,6 +399,12 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Consequences:** no container runtime is needed on the host. Scenario levers cover the ARCH §5.11 lever list except new candidate accounts (T7.1) and SKU eligibility; the natural-language parser (rest of T9.3) is not built yet.
 - **Refs:** ARCH §5.11, §6; PRD FR-28, US5, NFR-1; T9.3, T10.7, T12.1
 
+### D-055 · Onboarding simulator semantics · 2026-09-30 · accepted
+- **Context:** ARCH §5.10 leaves the acceptance rule and the candidate's demand model open.
+- **Decision:** the candidate is a contracted B2B line: its committed schedule (start month × ramp `full` / `50_100` / `33_66_100`) is its demand on every simulated future and is added to the risk detector's weekly demand. An option is acceptable when it adds expected contribution, keeps the planned fill of existing B2B accounts within a tolerance (STABILITY 0.5 pp, others 2 pp), raises P(any B2B shortfall) by at most 5 pp (STABILITY) or 15 pp (others), and its peak monthly volume stays within the concentration cap of planned capacity. Best acceptable option by Δ contribution → `accept_now` (earliest start, full) / `accept_from` (later start, full) / `phase` (ramped); none → `decline` with the reasons. The chosen option is persisted as a scenario run.
+- **Consequences:** AQS for the candidate is not scored yet (no history); tolerances are initial values, to be tuned only with TN entries.
+- **Refs:** ARCH §5.10, §9.8; PRD FR-21, US4; T7.1, T10.5
+
 ---
 
 ## 2. Assumptions register
@@ -833,4 +839,13 @@ Every task completion, design decision, assumption, contract change, integrity e
 - **Decisions made:** D-054
 - **Deviations from ARCH:** T12.1 native systemd deployment instead of Docker Compose (D-054)
 - **Known issues / follow-ups:** `deploy/install.sh` not yet run on a real RHEL 8.10 host. NL parser (T9.3 remainder), T6.2–T6.3, T7.1 open.
+
+### TL-039 · T7.1 + T10.5 · 2026-09-30
+- **Agent/author:** Claude Code
+- **Summary:** `dce.onboarding.simulate` (`Candidate`, ramp schedules, `add_candidate`, stress/risk demand, `recommend`); `plan_stage(..., candidate)`, `assess(..., extra_weekly)`; `Levers.candidate`; `service.simulate_onboarding` (base + every start × ramp, ~2 s on world_06); `POST /api/v1/onboarding/simulate`. Accounts screen: simulator form, recommendation with reasons, option table (Δ contribution, Δ revenue, existing-B2B fill, candidate served, D2C displaced, shortfall risk, capacity share, verdict) and "open in all screens".
+- **Files touched:** `backend/dce/{onboarding/simulate,runner,risk/detect,scenario,service,api/app}.py`, `backend/dce/tests/test_api.py`, `frontend/{components/Onboarding.tsx,app/accounts/page.tsx,lib/*}`
+- **Tests:** 2 added / 275 passing (zero-volume candidate = baseline plan, ARCH §9.8; oversized candidate declined or phased with a capacity reason; 422/404 mapping). UI driven in headless Chrome: 1,500 kg/mo candidate on world_06 STABILITY → "accept, starting Jan 2025, full volume", 7 options in 2.2 s.
+- **Decisions made:** D-055
+- **Deviations from ARCH:** candidate AQS not computed (no history)
+- **Known issues / follow-ups:** T6.2–T6.3 (ranked mitigations) and the natural-language scenario parser remain.
 
